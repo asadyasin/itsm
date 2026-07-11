@@ -10,5 +10,6 @@ router.get('/', authorize('admin', 'manager'), ctrl.list);
 router.get('/:id', authorize('admin', 'manager'), ctrl.get);
 router.post('/', authorize('admin'), purchaseRules, validate, ctrl.create);
 router.patch('/:id', authorize('admin'), ctrl.update);
+router.delete('/:id', authorize('admin'), ctrl.remove);
 
 module.exports = router;

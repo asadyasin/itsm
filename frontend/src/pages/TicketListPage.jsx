@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Box, Typography, Button, Stack, TextField, MenuItem, Card, CardContent } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTickets } from '../hooks/useTickets';
 import { StatusChip, PriorityChip } from '../components/StatusChips';
 import dayjs from '../utils/dayjs';
@@ -12,7 +12,8 @@ const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 
 export default function TicketListPage() {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState({ status: '', priority: '', search: '' });
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState({ status: searchParams.get('status') || '', priority: '', search: '' });
 
   const params = useMemo(() => {
     const p = {};

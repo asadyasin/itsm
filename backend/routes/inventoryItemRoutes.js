@@ -10,7 +10,7 @@ const { itemUnitRules, issueRules, returnRules } = require('../validators/invent
 router.use(protect);
 
 router.get('/', ctrl.list); // scoped per role inside controller
-router.get('/bulk-export', authorize('admin', 'manager'), bulkCtrl.exportInventory);
+router.get('/bulk-export', authorize('admin'), bulkCtrl.exportInventory);
 router.post('/bulk-import', authorize('admin'), upload.single('file'), bulkCtrl.importInventory);
 
 router.post('/issue', authorize('admin'), issueRules, validate, ctrl.issueItem);
@@ -18,6 +18,7 @@ router.post('/return', authorize('admin'), returnRules, validate, ctrl.returnIte
 
 router.get('/:id', ctrl.get);
 router.get('/:id/qrcode', ctrl.getQrCode);
+router.patch('/:id', authorize('admin'), ctrl.updateItem);
 router.post('/:id/transfer', authorize('admin'), ctrl.transferItem);
 router.post('/:id/scrap', authorize('admin'), ctrl.scrapItem);
 router.patch('/:id/status', authorize('admin'), ctrl.updateStatus);

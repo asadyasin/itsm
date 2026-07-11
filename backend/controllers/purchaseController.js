@@ -54,3 +54,12 @@ exports.update = asyncHandler(async (req, res) => {
   if (!purchase) throw new ApiError(404, 'Purchase not found');
   res.json({ success: true, data: purchase });
 });
+
+// DELETE /api/purchases/:id (admin only, soft delete) - the purchase record is hidden from lists,
+// but any InventoryItem units already registered against it (and their history) are untouched.
+exports.remove = asyncHandler(async (req, res) => {
+  const purchase = await Purchase.findOneAndUpdate({ _id: req.params.id }, { isDeleted: true }, { new: true });
+  if (!purchase) throw new ApiError(404, 'Purchase not found');
+  await logAction({ actor: req.user._id, action: 'DELETE_PURCHASE', module: 'Inventory', targetId: purchase._id, targetModel: 'Purchase' });
+  res.json({ success: true, message: 'Purchase record removed' });
+});

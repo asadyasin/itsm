@@ -3,7 +3,7 @@ import { Box, Typography, Button, TextField, MenuItem, Stack, Dialog, DialogTitl
 import { DataGrid } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { useInventoryItems, useCategories, useInventoryActions } from '../hooks/useInventory';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,7 +17,8 @@ export default function InventoryListPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
-  const [filters, setFilters] = useState({ status: '', itemCategory: '', search: '' });
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState({ status: searchParams.get('status') || '', itemCategory: '', search: '' });
   const [issueOpen, setIssueOpen] = useState(false);
   const [issueTarget, setIssueTarget] = useState(null);
 

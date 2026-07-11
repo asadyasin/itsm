@@ -11,7 +11,7 @@ export function AuthProvider({ children }) {
   const bootstrap = useCallback(async () => {
     try {
       // Attempt silent refresh using the httpOnly cookie set at login.
-      const { data } = await api.post('/auth/refresh');
+      const { data } = await api.post('/auth/refresh', {}, { silentAuth: true });
       setAccessToken(data.data.accessToken);
       setUser(data.data.user);
     } catch (err) {

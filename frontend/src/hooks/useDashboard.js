@@ -5,6 +5,10 @@ export function useDashboardSummary() {
   return useQuery({ queryKey: ['dashboard', 'summary'], queryFn: () => dashboardApi.summary().then((r) => r.data.data) });
 }
 
-export function useDashboardCharts() {
-  return useQuery({ queryKey: ['dashboard', 'charts'], queryFn: () => dashboardApi.charts().then((r) => r.data.data) });
+export function useDashboardCharts(enabled = true) {
+  return useQuery({
+    queryKey: ['dashboard', 'charts'],
+    queryFn: () => dashboardApi.charts().then((r) => r.data.data),
+    enabled
+  });
 }

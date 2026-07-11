@@ -15,6 +15,7 @@ const inventoryItemSchema = new mongoose.Schema(
     currentUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     currentTicket: { type: mongoose.Schema.Types.ObjectId, ref: 'Ticket', default: null },
     branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', default: null },
+    location: { type: String, trim: true }, // physical location, e.g. "Head Office - 3rd Floor" or "Warehouse A"
     warrantyExpiry: { type: Date, default: null },
     notes: { type: String, trim: true },
     isDeleted: { type: Boolean, default: false } // soft delete only; history is permanent regardless

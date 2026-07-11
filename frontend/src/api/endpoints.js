@@ -42,13 +42,15 @@ export const purchaseApi = {
   list: (params) => api.get('/purchases', { params }),
   get: (id) => api.get(`/purchases/${id}`),
   create: (data) => api.post('/purchases', data),
-  update: (id, data) => api.patch(`/purchases/${id}`, data)
+  update: (id, data) => api.patch(`/purchases/${id}`, data),
+  remove: (id) => api.delete(`/purchases/${id}`)
 };
 
 export const inventoryApi = {
   list: (params) => api.get('/inventory/items', { params }),
   get: (id) => api.get(`/inventory/items/${id}`),
   createUnits: (data) => api.post('/inventory/items', data),
+  update: (id, data) => api.patch(`/inventory/items/${id}`, data),
   qrCode: (id) => api.get(`/inventory/items/${id}/qrcode`),
   issue: (data) => api.post('/inventory/items/issue', data),
   return: (data) => api.post('/inventory/items/return', data),

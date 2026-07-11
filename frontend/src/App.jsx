@@ -37,7 +37,7 @@ export default function App() {
           <Route path="/users" element={<RequireRole roles={['admin']}><UsersPage /></RequireRole>} />
           <Route path="/departments" element={<RequireRole roles={['admin']}><DepartmentsPage /></RequireRole>} />
           <Route path="/vendors" element={<RequireRole roles={['admin']}><VendorsPage /></RequireRole>} />
-          <Route path="/reports" element={<RequireRole roles={['admin', 'manager']}><ReportsPage /></RequireRole>} />
+          <Route path="/reports" element={<RequireRole roles={['admin']}><ReportsPage /></RequireRole>} />
           <Route path="/audit-log" element={<RequireRole roles={['admin']}><AuditLogPage /></RequireRole>} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/search" element={<SearchResultsPage />} />

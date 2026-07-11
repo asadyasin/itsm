@@ -23,7 +23,7 @@ const NAV_ITEMS = [
   { label: 'Users', to: '/users', icon: <PeopleIcon />, roles: ['admin'] },
   { label: 'Departments', to: '/departments', icon: <ApartmentIcon />, roles: ['admin'] },
   { label: 'Vendors', to: '/vendors', icon: <StorefrontIcon />, roles: ['admin'] },
-  { label: 'Reports', to: '/reports', icon: <AssessmentIcon />, roles: ['admin', 'manager'] },
+  { label: 'Reports', to: '/reports', icon: <AssessmentIcon />, roles: ['admin'] },
   { label: 'Audit Log', to: '/audit-log', icon: <HistoryIcon />, roles: ['admin'] }
 ];
 

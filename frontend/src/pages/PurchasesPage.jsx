@@ -7,16 +7,21 @@ import { DataGrid } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { useSnackbar } from 'notistack';
+import { useConfirm } from '../hooks/useConfirm';
 import { usePurchases, useCategories, useVendors } from '../hooks/useInventory';
 import { purchaseApi, inventoryApi } from '../api/endpoints';
 import dayjs from '../utils/dayjs';
 
 export default function PurchasesPage() {
   const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
   const [unitsTarget, setUnitsTarget] = useState(null);
   const { data, isLoading, refetch } = usePurchases({ limit: 50 });
+  const { enqueueSnackbar } = useSnackbar();
+  const confirm = useConfirm();
 
   const rows = (data?.data || []).map((p) => ({
     id: p._id,
@@ -30,6 +35,14 @@ export default function PurchasesPage() {
     raw: p
   }));
 
+  const handleDelete = async (purchase) => {
+    const ok = await confirm(`Remove purchase record for ${purchase.brand || ''} ${purchase.model || ''}? Any serial numbers already registered will be unaffected.`);
+    if (!ok) return;
+    await purchaseApi.remove(purchase._id);
+    enqueueSnackbar('Purchase record removed', { variant: 'success' });
+    refetch();
+  };
+
   const columns = [
     { field: 'date', headerName: 'Purchase Date', width: 130 },
     { field: 'category', headerName: 'Category', width: 130 },
@@ -39,11 +52,20 @@ export default function PurchasesPage() {
     { field: 'vendor', headerName: 'Vendor', width: 150 },
     { field: 'invoiceNo', headerName: 'Invoice #', width: 120 },
     {
-      field: 'actions', headerName: 'Serials', width: 140, sortable: false,
+      field: 'serials', headerName: 'Serials', width: 130, sortable: false,
       renderCell: (params) => (
         <Button size="small" startIcon={<PlaylistAddIcon />} onClick={() => setUnitsTarget(params.row.raw)}>
           Add Units
         </Button>
+      )
+    },
+    {
+      field: 'actions', headerName: '', width: 100, sortable: false,
+      renderCell: (params) => (
+        <Stack direction="row">
+          <IconButton size="small" onClick={() => setEditTarget(params.row.raw)}><EditOutlinedIcon fontSize="small" /></IconButton>
+          <IconButton size="small" color="error" onClick={() => handleDelete(params.row.raw)}><DeleteOutlineIcon fontSize="small" /></IconButton>
+        </Stack>
       )
     }
   ];
@@ -62,20 +84,39 @@ export default function PurchasesPage() {
       </Card>
 
       <CreatePurchaseDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={refetch} />
+      <CreatePurchaseDialog open={!!editTarget} purchase={editTarget} onClose={() => setEditTarget(null)} onCreated={refetch} />
       <AddUnitsDialog purchase={unitsTarget} onClose={() => setUnitsTarget(null)} onDone={refetch} />
     </Box>
   );
 }
 
-function CreatePurchaseDialog({ open, onClose, onCreated }) {
+function CreatePurchaseDialog({ open, purchase, onClose, onCreated }) {
   const { enqueueSnackbar } = useSnackbar();
   const { data: categories } = useCategories();
   const { data: vendors } = useVendors();
-  const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm();
+  const isEdit = !!purchase;
+  const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm({
+    values: isEdit
+      ? {
+          itemCategory: purchase.itemCategory?._id || purchase.itemCategory,
+          vendor: purchase.vendor?._id || purchase.vendor,
+          brand: purchase.brand || '',
+          model: purchase.model || '',
+          quantity: purchase.quantity,
+          invoiceNo: purchase.invoiceNo || '',
+          description: purchase.description || ''
+        }
+      : undefined
+  });
 
   const submit = async (values) => {
-    await purchaseApi.create(values);
-    enqueueSnackbar('Purchase recorded', { variant: 'success' });
+    if (isEdit) {
+      await purchaseApi.update(purchase._id, values);
+      enqueueSnackbar('Purchase updated', { variant: 'success' });
+    } else {
+      await purchaseApi.create(values);
+      enqueueSnackbar('Purchase recorded', { variant: 'success' });
+    }
     reset();
     onCreated();
     onClose();
@@ -83,7 +124,7 @@ function CreatePurchaseDialog({ open, onClose, onCreated }) {
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Record Purchase</DialogTitle>
+      <DialogTitle>{isEdit ? 'Edit Purchase' : 'Record Purchase'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <Controller
@@ -127,24 +168,24 @@ function CreatePurchaseDialog({ open, onClose, onCreated }) {
 
 function AddUnitsDialog({ purchase, onClose, onDone }) {
   const { enqueueSnackbar } = useSnackbar();
-  const { control, handleSubmit, reset } = useForm({ defaultValues: { units: [{ serialNumber: '', assetTag: '' }] } });
+  const { control, handleSubmit, reset } = useForm({ defaultValues: { units: [{ serialNumber: '', assetTag: '', warrantyExpiry: '', location: '' }] } });
   const { fields, append, remove } = useFieldArray({ control, name: 'units' });
 
   const submit = async (values) => {
     await inventoryApi.createUnits({ purchaseId: purchase._id, units: values.units.filter((u) => u.serialNumber) });
     enqueueSnackbar('Serial numbers registered', { variant: 'success' });
-    reset({ units: [{ serialNumber: '', assetTag: '' }] });
+    reset({ units: [{ serialNumber: '', assetTag: '', warrantyExpiry: '', location: '' }] });
     onDone();
     onClose();
   };
 
   return (
-    <Dialog open={!!purchase} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open={!!purchase} onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle>Register Serial Numbers {purchase ? `— ${purchase.brand || ''} ${purchase.model || ''}` : ''}</DialogTitle>
       <DialogContent>
-        <Stack spacing={1.5} sx={{ mt: 1 }}>
+        <Stack spacing={2} sx={{ mt: 1 }}>
           {fields.map((field, index) => (
-            <Stack direction="row" spacing={1} key={field.id} alignItems="center">
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} key={field.id} alignItems={{ sm: 'center' }}>
               <Controller
                 name={`units.${index}.serialNumber`}
                 control={control}
@@ -155,10 +196,22 @@ function AddUnitsDialog({ purchase, onClose, onDone }) {
                 control={control}
                 render={({ field }) => <TextField {...field} label="Asset Tag (optional)" size="small" fullWidth />}
               />
+              <Controller
+                name={`units.${index}.warrantyExpiry`}
+                control={control}
+                render={({ field }) => (
+                  <TextField {...field} label="Warranty Expiry" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} />
+                )}
+              />
+              <Controller
+                name={`units.${index}.location`}
+                control={control}
+                render={({ field }) => <TextField {...field} label="Location (optional)" size="small" fullWidth />}
+              />
               <IconButton onClick={() => remove(index)} disabled={fields.length === 1}><DeleteOutlineIcon fontSize="small" /></IconButton>
             </Stack>
           ))}
-          <Button startIcon={<AddIcon />} onClick={() => append({ serialNumber: '', assetTag: '' })} sx={{ alignSelf: 'flex-start' }}>
+          <Button startIcon={<AddIcon />} onClick={() => append({ serialNumber: '', assetTag: '', warrantyExpiry: '', location: '' })} sx={{ alignSelf: 'flex-start' }}>
             Add another
           </Button>
         </Stack>

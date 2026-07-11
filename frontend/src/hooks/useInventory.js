@@ -37,6 +37,8 @@ export function useInventoryActions() {
   const returnItem = useMutation({ mutationFn: (data) => inventoryApi.return(data), onSuccess: invalidate });
   const scrap = useMutation({ mutationFn: ({ id, notes }) => inventoryApi.scrap(id, { notes }), onSuccess: invalidate });
   const transfer = useMutation({ mutationFn: ({ id, toUserId, notes }) => inventoryApi.transfer(id, { toUserId, notes }), onSuccess: invalidate });
+  const updateStatus = useMutation({ mutationFn: ({ id, status, notes }) => inventoryApi.updateStatus(id, { status, notes }), onSuccess: invalidate });
+  const updateDetails = useMutation({ mutationFn: ({ id, data }) => inventoryApi.update(id, data), onSuccess: invalidate });
 
-  return { issue, returnItem, scrap, transfer };
+  return { issue, returnItem, scrap, transfer, updateStatus, updateDetails };
 }

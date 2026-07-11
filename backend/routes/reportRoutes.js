@@ -4,6 +4,6 @@ const protect = require('../middlewares/authMiddleware');
 const authorize = require('../middlewares/rbacMiddleware');
 
 router.use(protect);
-router.get('/:type', authorize('admin', 'manager'), ctrl.generate);
+router.get('/:type', authorize('admin'), ctrl.generate);
 
 module.exports = router;
