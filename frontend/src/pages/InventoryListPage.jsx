@@ -8,7 +8,8 @@ import { useSnackbar } from 'notistack';
 import { useInventoryItems, useCategories, useInventoryActions } from '../hooks/useInventory';
 import { useAuth } from '../contexts/AuthContext';
 import { StatusChip } from '../components/StatusChips';
-import { inventoryApi, userApi } from '../api/endpoints';
+import { inventoryApi, ticketApi } from '../api/endpoints';
+import { downloadAuthenticated } from '../utils/download';
 import { useQuery } from '@tanstack/react-query';
 
 const STATUS_OPTIONS = ['Available', 'Issued', 'Repair', 'Lost', 'Scrapped', 'Reserved'];
@@ -21,6 +22,7 @@ export default function InventoryListPage() {
   const [filters, setFilters] = useState({ status: searchParams.get('status') || '', itemCategory: '', search: '' });
   const [issueOpen, setIssueOpen] = useState(false);
   const [issueTarget, setIssueTarget] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const params = useMemo(() => {
     const p = {};
@@ -32,6 +34,17 @@ export default function InventoryListPage() {
 
   const { data, isLoading, refetch } = useInventoryItems(params);
   const { data: categories } = useCategories();
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await downloadAuthenticated(inventoryApi.bulkExport('xlsx'), 'inventory-export.xlsx');
+    } catch (err) {
+      enqueueSnackbar('Failed to export inventory', { variant: 'error' });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const rows = (data?.data || []).map((item) => ({
     id: item._id,
@@ -60,8 +73,8 @@ export default function InventoryListPage() {
         <Typography variant="h5" fontWeight={700}>Inventory</Typography>
         {user?.role === 'admin' && (
           <Stack direction="row" spacing={1}>
-            <Button variant="outlined" startIcon={<FileDownloadIcon />} href={inventoryApi.bulkExportUrl('xlsx')} target="_blank">
-              Export
+            <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={handleExport} disabled={exporting}>
+              {exporting ? 'Exporting…' : 'Export'}
             </Button>
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setIssueOpen(true)}>
               Issue Item
@@ -127,28 +140,30 @@ export default function InventoryListPage() {
 
 function IssueDialog({ open, onClose, onIssued }) {
   const [selectedItem, setSelectedItem] = useState(null);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedTicket, setSelectedTicket] = useState(null);
   const [sendEmail, setSendEmail] = useState(true);
   const { issue } = useInventoryActions();
 
-  const { data: availableItems } = useQuery({
-    queryKey: ['available-items'],
-    queryFn: () => inventoryApi.list({ status: 'Available', limit: 100 }).then((r) => r.data.data),
-    enabled: open
-  });
-  const { data: users } = useQuery({
-    queryKey: ['users-for-issue'],
-    queryFn: () => userApi.list({ limit: 100 }).then((r) => r.data.data),
+  const { data: approvedTickets } = useQuery({
+    queryKey: ['approved-tickets-for-issue'],
+    queryFn: () => ticketApi.list({ status: 'Manager Approved', limit: 100 }).then((r) => r.data.data),
     enabled: open
   });
 
+  // Once a ticket is picked, only show items in stock that match what was actually requested.
+  const { data: availableItems } = useQuery({
+    queryKey: ['available-items-for-ticket', selectedTicket?.requestedItemCategory?._id],
+    queryFn: () => inventoryApi.list({ status: 'Available', itemCategory: selectedTicket.requestedItemCategory._id, limit: 100 }).then((r) => r.data.data),
+    enabled: open && !!selectedTicket
+  });
+
   const handleSubmit = async () => {
-    if (!selectedItem || !selectedUser) return;
-    await issue.mutateAsync({ itemId: selectedItem._id, userId: selectedUser._id, sendEmail });
+    if (!selectedItem || !selectedTicket) return;
+    await issue.mutateAsync({ itemId: selectedItem._id, ticketId: selectedTicket._id, userId: selectedTicket.user._id, sendEmail });
     onIssued();
     onClose();
     setSelectedItem(null);
-    setSelectedUser(null);
+    setSelectedTicket(null);
   };
 
   return (
@@ -157,18 +172,19 @@ function IssueDialog({ open, onClose, onIssued }) {
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <Autocomplete
+            options={approvedTickets || []}
+            getOptionLabel={(o) => `${o.ticketNumber} — ${o.user?.name} (${o.requestedItemCategory?.name})`}
+            value={selectedTicket}
+            onChange={(e, val) => { setSelectedTicket(val); setSelectedItem(null); }}
+            renderInput={(params) => <TextField {...params} label="Approved ticket" helperText="Only manager-approved tickets can be fulfilled" />}
+          />
+          <Autocomplete
             options={availableItems || []}
             getOptionLabel={(o) => `${o.serialNumber} — ${o.brand || ''} ${o.model || ''}`}
             value={selectedItem}
             onChange={(e, val) => setSelectedItem(val)}
-            renderInput={(params) => <TextField {...params} label="Available item" />}
-          />
-          <Autocomplete
-            options={users || []}
-            getOptionLabel={(o) => `${o.name} (${o.email})`}
-            value={selectedUser}
-            onChange={(e, val) => setSelectedUser(val)}
-            renderInput={(params) => <TextField {...params} label="Issue to user" />}
+            disabled={!selectedTicket}
+            renderInput={(params) => <TextField {...params} label={selectedTicket ? `Available ${selectedTicket.requestedItemCategory?.name}` : 'Select a ticket first'} />}
           />
           <FormControlLabel
             control={<Checkbox checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} />}
@@ -178,7 +194,7 @@ function IssueDialog({ open, onClose, onIssued }) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={issue.isPending}>
+        <Button variant="contained" onClick={handleSubmit} disabled={issue.isPending || !selectedTicket || !selectedItem}>
           {issue.isPending ? 'Issuing…' : 'Issue Item'}
         </Button>
       </DialogActions>

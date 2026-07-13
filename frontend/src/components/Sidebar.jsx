@@ -40,7 +40,7 @@ export default function Sidebar({ mobileOpen, onClose, variant }) {
             <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: 16 }}>IT</Typography>
           </Box>
           <Box>
-            <Typography variant="subtitle1" fontWeight={700} lineHeight={1.1}>Asset Desk</Typography>
+            <Typography variant="subtitle1" fontWeight={700} lineHeight={1.1}>10xE IT</Typography>
             <Typography variant="caption" color="text.secondary">Inventory & Help Desk</Typography>
           </Box>
         </Box>

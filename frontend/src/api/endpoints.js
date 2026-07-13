@@ -58,7 +58,7 @@ export const inventoryApi = {
   scrap: (id, data) => api.post(`/inventory/items/${id}/scrap`, data),
   updateStatus: (id, data) => api.patch(`/inventory/items/${id}/status`, data),
   bulkImport: (formData) => api.post('/inventory/items/bulk-import', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  bulkExportUrl: (format) => `${api.defaults.baseURL}/inventory/items/bulk-export?format=${format}`
+  bulkExport: (format) => api.get('/inventory/items/bulk-export', { params: { format }, responseType: 'blob' })
 };
 
 export const ticketApi = {
@@ -82,7 +82,7 @@ export const dashboardApi = {
 };
 
 export const reportApi = {
-  downloadUrl: (type, format) => `${api.defaults.baseURL}/reports/${type}?format=${format}`
+  download: (type, format) => api.get(`/reports/${type}`, { params: { format }, responseType: 'blob' })
 };
 
 export const searchApi = {

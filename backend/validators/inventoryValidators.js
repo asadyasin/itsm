@@ -18,7 +18,7 @@ exports.itemUnitRules = [
 
 exports.issueRules = [
   body('itemId').isMongoId().withMessage('Valid inventory item is required'),
-  body('ticketId').optional().isMongoId(),
+  body('ticketId').isMongoId().withMessage('An approved ticket is required to issue an item'),
   body('userId').isMongoId().withMessage('Valid recipient user is required'),
   body('sendEmail').optional().isBoolean()
 ];

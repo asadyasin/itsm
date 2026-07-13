@@ -91,7 +91,7 @@ export default function DashboardPage() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>Welcome back, {user?.name?.split(' ')[0]}</Typography>
+      <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>Welcome, {user?.name?.split(' ')[0]}</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Here's what's happening {isAdmin ? 'across inventory and support tickets today' : 'with your tickets and issued items'}.
       </Typography>

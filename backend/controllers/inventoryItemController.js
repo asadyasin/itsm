@@ -219,9 +219,14 @@ exports.getQrCode = asyncHandler(async (req, res) => {
   res.json({ success: true, data: { qrCodeImage: dataUrl, qrCodeText: item.qrCodeData } });
 });
 
-// POST /api/inventory/items/issue  - Admin issues an approved/available item to a user, optionally linked to a ticket
+// POST /api/inventory/items/issue  - Admin issues an item to a user against an approved ticket.
+// A ticket is mandatory: items are never issued outside the ticket workflow (request -> approve -> issue).
 exports.issueItem = asyncHandler(async (req, res) => {
   const { itemId, ticketId, userId, sendEmail } = req.body;
+
+  if (!ticketId) {
+    throw new ApiError(400, 'An approved ticket is required to issue an item.');
+  }
 
   const item = await InventoryItem.findOne({ _id: itemId, isDeleted: false });
   if (!item) throw new ApiError(404, 'Inventory item not found');
@@ -232,13 +237,13 @@ exports.issueItem = asyncHandler(async (req, res) => {
   const recipient = await User.findOne({ _id: userId, isDeleted: false });
   if (!recipient) throw new ApiError(404, 'Recipient user not found');
 
-  let ticket = null;
-  if (ticketId) {
-    ticket = await Ticket.findOne({ _id: ticketId, isDeleted: false });
-    if (!ticket) throw new ApiError(404, 'Ticket not found');
-    if (!['Manager Approved', 'Assigned'].includes(ticket.status)) {
-      throw new ApiError(400, `Ticket must be approved before issuing an item (current status: ${ticket.status})`);
-    }
+  const ticket = await Ticket.findOne({ _id: ticketId, isDeleted: false });
+  if (!ticket) throw new ApiError(404, 'Ticket not found');
+  if (!['Manager Approved', 'Assigned'].includes(ticket.status)) {
+    throw new ApiError(400, `Ticket must be approved before issuing an item (current status: ${ticket.status})`);
+  }
+  if (ticket.user.toString() !== recipient._id.toString()) {
+    throw new ApiError(400, 'The selected ticket does not belong to the selected recipient.');
   }
 
   item.status = 'Issued';

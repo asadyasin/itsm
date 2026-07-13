@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { Box, Typography, Card, CardContent, Grid, Button, Stack } from '@mui/material';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import { useSnackbar } from 'notistack';
 import { reportApi } from '../api/endpoints';
+import { downloadAuthenticated } from '../utils/download';
 
 const REPORTS = [
   { type: 'issued-assets', label: 'Issued Assets', description: 'All currently issued inventory items and their holders.' },
@@ -11,12 +14,27 @@ const REPORTS = [
 ];
 
 const FORMATS = [
-  { format: 'excel', label: 'Excel' },
-  { format: 'csv', label: 'CSV' },
-  { format: 'pdf', label: 'PDF' }
+  { format: 'excel', label: 'Excel', ext: 'xlsx' },
+  { format: 'csv', label: 'CSV', ext: 'csv' },
+  { format: 'pdf', label: 'PDF', ext: 'pdf' }
 ];
 
 export default function ReportsPage() {
+  const { enqueueSnackbar } = useSnackbar();
+  const [downloading, setDownloading] = useState(null); // `${type}-${format}` while in flight
+
+  const handleDownload = async (type, format, ext) => {
+    const key = `${type}-${format}`;
+    setDownloading(key);
+    try {
+      await downloadAuthenticated(reportApi.download(type, format), `${type}.${ext}`);
+    } catch (err) {
+      enqueueSnackbar('Failed to download report', { variant: 'error' });
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   return (
     <Box>
       <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>Reports</Typography>
@@ -34,10 +52,10 @@ export default function ReportsPage() {
                       size="small"
                       variant="outlined"
                       startIcon={<FileDownloadIcon />}
-                      href={reportApi.downloadUrl(report.type, f.format)}
-                      target="_blank"
+                      disabled={downloading === `${report.type}-${f.format}`}
+                      onClick={() => handleDownload(report.type, f.format, f.ext)}
                     >
-                      {f.label}
+                      {downloading === `${report.type}-${f.format}` ? 'Downloading…' : f.label}
                     </Button>
                   ))}
                 </Stack>

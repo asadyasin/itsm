@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Box, Typography, Grid, Card, CardContent, Stack, Button, TextField, Autocomplete, Skeleton,
-  Dialog, DialogTitle, DialogContent, DialogActions
+  Dialog, DialogTitle, DialogContent, DialogActions, MenuItem
 } from '@mui/material';
 import {
   Timeline, TimelineItem, TimelineSeparator, TimelineDot, TimelineConnector, TimelineContent, TimelineOppositeContent
@@ -17,16 +17,20 @@ import { useAuth } from '../contexts/AuthContext';
 import { StatusChip } from '../components/StatusChips';
 import dayjs from '../utils/dayjs';
 
+const CHANGEABLE_STATUSES = ['Available', 'Repair', 'Lost', 'Reserved', 'Scrapped'];
+
 export default function InventoryDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
   const { data, isLoading, refetch } = useInventoryItem(id);
-  const { returnItem, scrap, transfer, updateStatus } = useInventoryActions();
+  const { returnItem, transfer, updateStatus } = useInventoryActions();
 
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferUser, setTransferUser] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [newStatus, setNewStatus] = useState('');
+  const [statusNotes, setStatusNotes] = useState('');
 
   const { data: qrData } = useQuery({
     queryKey: ['qrcode', id],
@@ -50,12 +54,6 @@ export default function InventoryDetailPage() {
     refetch();
   };
 
-  const handleScrap = async () => {
-    await scrap.mutateAsync({ id: item._id, notes: 'Retired via asset detail page' });
-    enqueueSnackbar('Item marked as scrapped', { variant: 'success' });
-    refetch();
-  };
-
   const handleTransfer = async () => {
     if (!transferUser) return;
     await transfer.mutateAsync({ id: item._id, toUserId: transferUser._id });
@@ -64,9 +62,12 @@ export default function InventoryDetailPage() {
     refetch();
   };
 
-  const changeStatus = async (status, label) => {
-    await updateStatus.mutateAsync({ id: item._id, status });
-    enqueueSnackbar(label, { variant: 'success' });
+  const handleApplyStatus = async () => {
+    if (!newStatus) return;
+    await updateStatus.mutateAsync({ id: item._id, status: newStatus, notes: statusNotes });
+    enqueueSnackbar(`Status changed to ${newStatus}`, { variant: 'success' });
+    setNewStatus('');
+    setStatusNotes('');
     refetch();
   };
 
@@ -100,69 +101,73 @@ export default function InventoryDetailPage() {
               </Grid>
 
               {user?.role === 'admin' && (
-                <Stack direction="row" spacing={1} sx={{ mt: 3 }} flexWrap="wrap" useFlexGap>
-                  {item.status === 'Issued' && (
-                    <>
+                <Box sx={{ mt: 3 }}>
+                  {item.status === 'Issued' ? (
+                    <Stack direction="row" spacing={1}>
                       <Button variant="contained" onClick={handleReturn}>Return</Button>
                       <Button variant="outlined" onClick={() => setTransferOpen(true)}>Transfer</Button>
-                    </>
+                    </Stack>
+                  ) : (
+                    <Stack spacing={1.5}>
+                      <Typography variant="subtitle2">Change Status</Typography>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
+                        <TextField
+                          select
+                          size="small"
+                          label="New status"
+                          value={newStatus}
+                          onChange={(e) => setNewStatus(e.target.value)}
+                          sx={{ minWidth: 180 }}
+                        >
+                          {CHANGEABLE_STATUSES.filter((s) => s !== item.status).map((s) => (
+                            <MenuItem key={s} value={s}>{s}</MenuItem>
+                          ))}
+                        </TextField>
+                        <TextField
+                          size="small"
+                          label="Notes (optional)"
+                          value={statusNotes}
+                          onChange={(e) => setStatusNotes(e.target.value)}
+                          fullWidth
+                        />
+                        <Button variant="contained" onClick={handleApplyStatus} disabled={!newStatus} sx={{ whiteSpace: 'nowrap' }}>
+                          Apply
+                        </Button>
+                      </Stack>
+                    </Stack>
                   )}
-                  {item.status === 'Available' && (
-                    <Button variant="outlined" onClick={() => changeStatus('Repair', 'Item sent for repair')}>Send to Repair</Button>
-                  )}
-                  {item.status === 'Repair' && (
-                    <Button variant="contained" color="success" onClick={() => changeStatus('Available', 'Item marked repaired and available')}>
-                      Mark Repaired &rarr; Available
-                    </Button>
-                  )}
-                  {item.status === 'Scrapped' && (
-                    <>
-                      <Button variant="contained" color="success" onClick={() => changeStatus('Available', 'Item restored to inventory')}>
-                        Restore &rarr; Available
-                      </Button>
-                      <Button variant="outlined" onClick={() => changeStatus('Repair', 'Item moved to repair')}>
-                        Restore &rarr; Repair
-                      </Button>
-                    </>
-                  )}
-                  {item.status === 'Lost' && (
-                    <Button variant="contained" color="success" onClick={() => changeStatus('Available', 'Item found and restored')}>
-                      Found &rarr; Restore to Available
-                    </Button>
-                  )}
-                  {!['Scrapped'].includes(item.status) && (
-                    <Button variant="outlined" color="error" onClick={handleScrap}>Scrap</Button>
-                  )}
-                </Stack>
+                </Box>
               )}
             </CardContent>
           </Card>
 
-          <Card sx={{ mt: 2 }}>
-            <CardContent>
-              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>Asset Timeline</Typography>
-              <Timeline sx={{ p: 0, m: 0 }}>
-                {history.map((h, idx) => (
-                  <TimelineItem key={h._id}>
-                    <TimelineOppositeContent sx={{ flex: 0.35 }} color="text.secondary" fontSize={12}>
-                      {dayjs(h.dateTime).format('DD MMM YYYY, h:mm A')}
-                    </TimelineOppositeContent>
-                    <TimelineSeparator>
-                      <TimelineDot color="primary" />
-                      {idx < history.length - 1 && <TimelineConnector />}
-                    </TimelineSeparator>
-                    <TimelineContent>
-                      <Typography variant="body2" fontWeight={600}>{h.action}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        By {h.performedBy?.name}{h.targetUser ? ` → ${h.targetUser.name}` : ''}
-                      </Typography>
-                      {h.notes && <Typography variant="caption" display="block" color="text.secondary">{h.notes}</Typography>}
-                    </TimelineContent>
-                  </TimelineItem>
-                ))}
-              </Timeline>
-            </CardContent>
-          </Card>
+          {user?.role === 'admin' && (
+            <Card sx={{ mt: 2 }}>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>Asset Timeline</Typography>
+                <Timeline sx={{ p: 0, m: 0 }}>
+                  {history.map((h, idx) => (
+                    <TimelineItem key={h._id}>
+                      <TimelineOppositeContent sx={{ flex: 0.35 }} color="text.secondary" fontSize={12}>
+                        {dayjs(h.dateTime).format('DD MMM YYYY, h:mm A')}
+                      </TimelineOppositeContent>
+                      <TimelineSeparator>
+                        <TimelineDot color="primary" />
+                        {idx < history.length - 1 && <TimelineConnector />}
+                      </TimelineSeparator>
+                      <TimelineContent>
+                        <Typography variant="body2" fontWeight={600}>{h.action}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          By {h.performedBy?.name}{h.targetUser ? ` → ${h.targetUser.name}` : ''}
+                        </Typography>
+                        {h.notes && <Typography variant="caption" display="block" color="text.secondary">{h.notes}</Typography>}
+                      </TimelineContent>
+                    </TimelineItem>
+                  ))}
+                </Timeline>
+              </CardContent>
+            </Card>
+          )}
         </Grid>
 
         <Grid item xs={12} md={5}>
