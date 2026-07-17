@@ -6,6 +6,7 @@ const Purchase = require('../models/Purchase');
 const Ticket = require('../models/Ticket');
 const User = require('../models/User');
 const ItemCategory = require('../models/ItemCategory');
+const Office = require('../models/Office');
 const { recordHistory } = require('../services/inventoryHistoryService');
 const { logAction } = require('../services/auditService');
 const { sendTemplateEmail } = require('../services/emailService');
@@ -17,9 +18,9 @@ const orgConfig = require('../config/orgConfig');
 // A scanner (phone camera, dedicated scanner app, etc.) reading this gets enough
 // context to identify the asset without a network lookup, plus the item ID so the
 // issue/return workflow can look it up directly.
-function buildQrPayload(item, categoryName) {
+function buildQrPayload(item, categoryName, companyName) {
   const lines = [
-    `Company: ${orgConfig.orgName}`,
+    `Company: ${companyName || orgConfig.orgName}`,
     `Asset Tag: ${item.assetTag || 'N/A'}`,
     `Category: ${categoryName || 'N/A'}`,
     `Brand/Model: ${[item.brand, item.model].filter(Boolean).join(' ') || 'N/A'}`,
@@ -32,23 +33,33 @@ function buildQrPayload(item, categoryName) {
 
 async function regenerateQrCode(item) {
   const category = await ItemCategory.findById(item.itemCategory).select('name');
-  item.qrCodeData = buildQrPayload(item, category?.name);
+  let companyName;
+  if (item.office) {
+    const office = await Office.findById(item.office).populate('company', 'name');
+    companyName = office?.company?.name;
+  }
+  item.qrCodeData = buildQrPayload(item, category?.name, companyName);
   return item;
 }
 
 // GET /api/inventory/items  - list with filters (category, vendor via purchase, status, brand, model) + global search
 exports.list = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, status, itemCategory, brand, model, search } = req.query;
+  const { page = 1, limit = 20, status, itemCategory, brand, model, search, scope } = req.query;
   const filter = { isDeleted: false };
 
   if (req.user.role === 'user') {
     // Regular users only ever see items currently issued to them.
     filter.currentUser = req.user._id;
   } else if (req.user.role === 'manager') {
-    // Managers only see items issued to someone in their own department (including themselves) —
-    // never the full org-wide inventory catalog.
-    const teamUsers = await User.find({ department: req.user.department, isDeleted: false }).select('_id');
-    filter.currentUser = { $in: teamUsers.map((u) => u._id) };
+    if (scope === 'mine') {
+      // Only the manager's own issued items.
+      filter.currentUser = req.user._id;
+    } else {
+      // Default: the manager's reports (team members), excluding the manager's own items,
+      // so "team" and "mine" are always two clearly separate views.
+      const teamUsers = await User.find({ department: req.user.department, isDeleted: false, _id: { $ne: req.user._id } }).select('_id');
+      filter.currentUser = { $in: teamUsers.map((u) => u._id) };
+    }
   }
   // Admins see everything (no additional scoping).
 
@@ -63,6 +74,7 @@ exports.list = asyncHandler(async (req, res) => {
     InventoryItem.find(filter)
       .populate('itemCategory', 'name')
       .populate('currentUser', 'name email')
+      .populate('office', 'name location')
       .populate({ path: 'purchase', populate: { path: 'vendor', select: 'name' } })
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -87,6 +99,7 @@ exports.get = asyncHandler(async (req, res) => {
   const item = await InventoryItem.findOne(filter)
     .populate('itemCategory', 'name')
     .populate('currentUser', 'name email')
+    .populate('office', 'name location')
     .populate({ path: 'purchase', populate: { path: 'vendor', select: 'name' } });
   if (!item) throw new ApiError(404, 'Inventory item not found');
 
@@ -152,6 +165,7 @@ exports.createUnits = asyncHandler(async (req, res) => {
   }
 
   const category = await ItemCategory.findById(purchase.itemCategory).select('name');
+  const office = await Office.findById(purchase.office).populate('company', 'name');
 
   const created = [];
   for (const unit of cleanUnits) {
@@ -163,10 +177,11 @@ exports.createUnits = asyncHandler(async (req, res) => {
       serialNumber: unit.serialNumber,
       assetTag: unit.assetTag,
       warrantyExpiry: unit.warrantyExpiry || null,
-      location: unit.location || '',
+      office: office?._id || null,
+      location: office?.location || '', // auto-derived from the purchase's office — never entered manually
       status: 'Available'
     });
-    item.qrCodeData = buildQrPayload(item, category?.name);
+    item.qrCodeData = buildQrPayload(item, category?.name, office?.company?.name);
     await item.save();
 
     await recordHistory({ item: item._id, action: 'Added', performedBy: req.user._id, notes: `Registered from purchase ${purchase.invoiceNo || purchase._id}` });
@@ -178,10 +193,12 @@ exports.createUnits = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: created });
 });
 
-// PATCH /api/inventory/items/:id  - edit asset details (brand/model/assetTag/location/warrantyExpiry/notes)
+// PATCH /api/inventory/items/:id  - edit asset details (brand/model/assetTag/warrantyExpiry/notes)
+// Note: location/office are intentionally NOT editable here — they're fixed at registration time,
+// auto-derived from the purchase's office, per the "no manual location entry" requirement.
 // Regenerates the QR payload since it embeds these fields.
 exports.updateItem = asyncHandler(async (req, res) => {
-  const allowed = ['brand', 'model', 'assetTag', 'location', 'warrantyExpiry', 'notes'];
+  const allowed = ['brand', 'model', 'assetTag', 'warrantyExpiry', 'notes'];
   const item = await InventoryItem.findOne({ _id: req.params.id, isDeleted: false });
   if (!item) throw new ApiError(404, 'Inventory item not found');
 
@@ -239,7 +256,7 @@ exports.issueItem = asyncHandler(async (req, res) => {
 
   const ticket = await Ticket.findOne({ _id: ticketId, isDeleted: false });
   if (!ticket) throw new ApiError(404, 'Ticket not found');
-  if (!['Manager Approved', 'Assigned'].includes(ticket.status)) {
+  if (!['Manager Approved', 'Assigned', 'Reopened'].includes(ticket.status)) {
     throw new ApiError(400, `Ticket must be approved before issuing an item (current status: ${ticket.status})`);
   }
   if (ticket.user.toString() !== recipient._id.toString()) {

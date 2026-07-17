@@ -4,6 +4,7 @@ const purchaseSchema = new mongoose.Schema(
   {
     purchaseDate: { type: Date, required: true, default: Date.now },
     itemCategory: { type: mongoose.Schema.Types.ObjectId, ref: 'ItemCategory', required: true },
+    office: { type: mongoose.Schema.Types.ObjectId, ref: 'Office', required: true }, // which office this stock belongs to / is stored at
     brand: { type: String, trim: true },
     model: { type: String, trim: true },
     quantity: { type: Number, required: true, min: 1 },

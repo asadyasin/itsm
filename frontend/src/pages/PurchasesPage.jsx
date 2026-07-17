@@ -9,10 +9,11 @@ import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
 import { useConfirm } from '../hooks/useConfirm';
 import { usePurchases, useCategories, useVendors } from '../hooks/useInventory';
-import { purchaseApi, inventoryApi } from '../api/endpoints';
+import { purchaseApi, inventoryApi, officeApi } from '../api/endpoints';
 import dayjs from '../utils/dayjs';
 
 export default function PurchasesPage() {
@@ -31,6 +32,7 @@ export default function PurchasesPage() {
     model: p.model,
     quantity: p.quantity,
     vendor: p.vendor?.name,
+    office: p.office?.name || '—',
     invoiceNo: p.invoiceNo,
     raw: p
   }));
@@ -50,6 +52,7 @@ export default function PurchasesPage() {
     { field: 'model', headerName: 'Model', width: 120 },
     { field: 'quantity', headerName: 'Qty', width: 80 },
     { field: 'vendor', headerName: 'Vendor', width: 150 },
+    { field: 'office', headerName: 'Office', width: 130 },
     { field: 'invoiceNo', headerName: 'Invoice #', width: 120 },
     {
       field: 'serials', headerName: 'Serials', width: 130, sortable: false,
@@ -94,12 +97,14 @@ function CreatePurchaseDialog({ open, purchase, onClose, onCreated }) {
   const { enqueueSnackbar } = useSnackbar();
   const { data: categories } = useCategories();
   const { data: vendors } = useVendors();
+  const { data: offices } = useQuery({ queryKey: ['offices'], queryFn: () => officeApi.list().then((r) => r.data.data) });
   const isEdit = !!purchase;
   const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm({
     values: isEdit
       ? {
           itemCategory: purchase.itemCategory?._id || purchase.itemCategory,
           vendor: purchase.vendor?._id || purchase.vendor,
+          office: purchase.office?._id || purchase.office,
           brand: purchase.brand || '',
           model: purchase.model || '',
           quantity: purchase.quantity,
@@ -147,6 +152,16 @@ function CreatePurchaseDialog({ open, purchase, onClose, onCreated }) {
               </TextField>
             )}
           />
+          <Controller
+            name="office"
+            control={control}
+            rules={{ required: true }}
+            render={({ field }) => (
+              <TextField {...field} select label="Office (stock location)" error={!!errors.office} fullWidth helperText="Serial numbers registered under this purchase inherit this office's location automatically">
+                {(offices || []).map((o) => <MenuItem key={o._id} value={o._id}>{o.name} ({o.location})</MenuItem>)}
+              </TextField>
+            )}
+          />
           <Stack direction="row" spacing={2}>
             <TextField label="Brand" fullWidth {...register('brand')} />
             <TextField label="Model" fullWidth {...register('model')} />
@@ -168,13 +183,13 @@ function CreatePurchaseDialog({ open, purchase, onClose, onCreated }) {
 
 function AddUnitsDialog({ purchase, onClose, onDone }) {
   const { enqueueSnackbar } = useSnackbar();
-  const { control, handleSubmit, reset } = useForm({ defaultValues: { units: [{ serialNumber: '', assetTag: '', warrantyExpiry: '', location: '' }] } });
+  const { control, handleSubmit, reset } = useForm({ defaultValues: { units: [{ serialNumber: '', assetTag: '', warrantyExpiry: '' }] } });
   const { fields, append, remove } = useFieldArray({ control, name: 'units' });
 
   const submit = async (values) => {
     await inventoryApi.createUnits({ purchaseId: purchase._id, units: values.units.filter((u) => u.serialNumber) });
     enqueueSnackbar('Serial numbers registered', { variant: 'success' });
-    reset({ units: [{ serialNumber: '', assetTag: '', warrantyExpiry: '', location: '' }] });
+    reset({ units: [{ serialNumber: '', assetTag: '', warrantyExpiry: '' }] });
     onDone();
     onClose();
   };
@@ -183,6 +198,11 @@ function AddUnitsDialog({ purchase, onClose, onDone }) {
     <Dialog open={!!purchase} onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle>Register Serial Numbers {purchase ? `— ${purchase.brand || ''} ${purchase.model || ''}` : ''}</DialogTitle>
       <DialogContent>
+        {purchase?.office && (
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1.5 }}>
+            Location will be set automatically to <b>{purchase.office.name} ({purchase.office.location})</b>.
+          </Typography>
+        )}
         <Stack spacing={2} sx={{ mt: 1 }}>
           {fields.map((field, index) => (
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} key={field.id} alignItems={{ sm: 'center' }}>
@@ -203,15 +223,10 @@ function AddUnitsDialog({ purchase, onClose, onDone }) {
                   <TextField {...field} label="Warranty Expiry" type="date" size="small" fullWidth InputLabelProps={{ shrink: true }} />
                 )}
               />
-              <Controller
-                name={`units.${index}.location`}
-                control={control}
-                render={({ field }) => <TextField {...field} label="Location (optional)" size="small" fullWidth />}
-              />
               <IconButton onClick={() => remove(index)} disabled={fields.length === 1}><DeleteOutlineIcon fontSize="small" /></IconButton>
             </Stack>
           ))}
-          <Button startIcon={<AddIcon />} onClick={() => append({ serialNumber: '', assetTag: '', warrantyExpiry: '', location: '' })} sx={{ alignSelf: 'flex-start' }}>
+          <Button startIcon={<AddIcon />} onClick={() => append({ serialNumber: '', assetTag: '', warrantyExpiry: '' })} sx={{ alignSelf: 'flex-start' }}>
             Add another
           </Button>
         </Stack>

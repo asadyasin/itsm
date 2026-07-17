@@ -91,7 +91,7 @@ export default function DashboardPage() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>Welcome, {user?.name?.split(' ')[0]}</Typography>
+      <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5 }}>Welcome back, {user?.name?.split(' ')[0]}</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Here's what's happening {isAdmin ? 'across inventory and support tickets today' : 'with your tickets and issued items'}.
       </Typography>
@@ -129,13 +129,20 @@ export default function DashboardPage() {
               />
             </Grid>
           ))}
-          <Grid item xs={12}>
-            <IssuedItemsCard
-              title={isManager ? "Team's Issued Items" : 'My Issued Items'}
-              items={isManager ? summary?.teamIssuedItems : summary?.myIssuedItems}
-              loading={loadingSummary}
-            />
-          </Grid>
+          {isManager ? (
+            <>
+              <Grid item xs={12} md={6}>
+                <IssuedItemsCard title="My Issued Items" items={summary?.myIssuedItems} loading={loadingSummary} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <IssuedItemsCard title="Team's Issued Items" items={summary?.teamIssuedItems} loading={loadingSummary} />
+              </Grid>
+            </>
+          ) : (
+            <Grid item xs={12}>
+              <IssuedItemsCard title="My Issued Items" items={summary?.myIssuedItems} loading={loadingSummary} />
+            </Grid>
+          )}
         </Grid>
       )}
 

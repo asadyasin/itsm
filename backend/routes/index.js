@@ -2,6 +2,8 @@ const router = require('express').Router();
 
 router.use('/auth', require('./authRoutes'));
 router.use('/users', require('./userRoutes'));
+router.use('/companies', require('./companyRoutes'));
+router.use('/offices', require('./officeRoutes'));
 router.use('/departments', require('./departmentRoutes'));
 router.use('/vendors', require('./vendorRoutes'));
 router.use('/item-categories', require('./itemCategoryRoutes'));

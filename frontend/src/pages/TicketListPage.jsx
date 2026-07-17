@@ -4,6 +4,7 @@ import { DataGrid } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTickets } from '../hooks/useTickets';
+import { useAuth } from '../contexts/AuthContext';
 import { StatusChip, PriorityChip } from '../components/StatusChips';
 import dayjs from '../utils/dayjs';
 
@@ -11,17 +12,20 @@ const STATUS_OPTIONS = ['Pending', 'Manager Approved', 'Manager Rejected', 'Assi
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 
 export default function TicketListPage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState({ status: searchParams.get('status') || '', priority: '', search: '' });
+  const [scope, setScope] = useState('mine'); // manager-only toggle: 'mine' (own tickets, shown first) or 'team'
 
   const params = useMemo(() => {
     const p = {};
     if (filters.status) p.status = filters.status;
     if (filters.priority) p.priority = filters.priority;
     if (filters.search) p.search = filters.search;
+    if (user?.role === 'manager') p.scope = scope;
     return p;
-  }, [filters]);
+  }, [filters, scope, user]);
 
   const { data, isLoading } = useTickets(params);
 
@@ -52,6 +56,19 @@ export default function TicketListPage() {
       </Stack>
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
+        {user?.role === 'manager' && (
+          <TextField
+            size="small"
+            select
+            label="Show"
+            value={scope}
+            onChange={(e) => setScope(e.target.value)}
+            sx={{ minWidth: 170 }}
+          >
+            <MenuItem value="mine">My Own Tickets</MenuItem>
+            <MenuItem value="team">Team's Tickets</MenuItem>
+          </TextField>
+        )}
         <TextField size="small" label="Search" value={filters.search} onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))} sx={{ minWidth: 220 }} />
         <TextField size="small" select label="Status" value={filters.status} onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))} sx={{ minWidth: 180 }}>
           <MenuItem value="">All</MenuItem>

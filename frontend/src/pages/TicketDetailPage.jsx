@@ -132,6 +132,14 @@ export default function TicketDetailPage() {
                 {ticket.status === 'Manager Approved' && isAdmin && (
                   <Button variant="contained" onClick={() => setIssueOpen(true)}>Issue Item</Button>
                 )}
+                {ticket.status === 'Reopened' && isAdmin && (
+                  <>
+                    <Button variant="contained" onClick={() => setIssueOpen(true)}>Issue Replacement Item</Button>
+                    <Button variant="outlined" onClick={() => act(() => resolve.mutateAsync(ticket._id), 'Ticket resolved')}>
+                      Mark Resolved (no reissue needed)
+                    </Button>
+                  </>
+                )}
                 {ticket.status === 'Issued' && isAdmin && (
                   <Button variant="contained" onClick={() => act(() => resolve.mutateAsync(ticket._id), 'Ticket resolved')}>Mark Resolved</Button>
                 )}
@@ -141,7 +149,7 @@ export default function TicketDetailPage() {
                 {['Resolved', 'Closed'].includes(ticket.status) && (isAdmin || isOwner) && (
                   <Button variant="outlined" onClick={() => act(() => reopen.mutateAsync(ticket._id), 'Ticket reopened')}>Reopen</Button>
                 )}
-                {!['Pending', 'Manager Approved', 'Issued', 'Resolved', 'Closed'].includes(ticket.status) && (
+                {!['Pending', 'Manager Approved', 'Issued', 'Resolved', 'Closed', 'Reopened'].includes(ticket.status) && (
                   <Typography variant="body2" color="text.secondary">No actions available for the current status.</Typography>
                 )}
               </Stack>

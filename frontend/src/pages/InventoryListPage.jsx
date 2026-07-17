@@ -20,6 +20,7 @@ export default function InventoryListPage() {
   const { enqueueSnackbar } = useSnackbar();
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState({ status: searchParams.get('status') || '', itemCategory: '', search: '' });
+  const [scope, setScope] = useState('mine'); // manager-only toggle: 'mine' (own items, shown first) or 'team'
   const [issueOpen, setIssueOpen] = useState(false);
   const [issueTarget, setIssueTarget] = useState(null);
   const [exporting, setExporting] = useState(false);
@@ -29,8 +30,9 @@ export default function InventoryListPage() {
     if (filters.status) p.status = filters.status;
     if (filters.itemCategory) p.itemCategory = filters.itemCategory;
     if (filters.search) p.search = filters.search;
+    if (user?.role === 'manager') p.scope = scope;
     return p;
-  }, [filters]);
+  }, [filters, scope, user]);
 
   const { data, isLoading, refetch } = useInventoryItems(params);
   const { data: categories } = useCategories();
@@ -84,6 +86,19 @@ export default function InventoryListPage() {
       </Stack>
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
+        {user?.role === 'manager' && (
+          <TextField
+            size="small"
+            select
+            label="Show"
+            value={scope}
+            onChange={(e) => setScope(e.target.value)}
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value="mine">My Own Items</MenuItem>
+            <MenuItem value="team">Team's Items</MenuItem>
+          </TextField>
+        )}
         <TextField
           size="small"
           label="Search"

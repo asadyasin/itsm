@@ -61,13 +61,16 @@ exports.summary = asyncHandler(async (req, res) => {
   }
 
   if (req.user.role === 'manager') {
-    const teamUsers = await User.find({ department: req.user.department, isDeleted: false }).select('_id');
+    const teamUsers = await User.find({ department: req.user.department, isDeleted: false, _id: { $ne: req.user._id } }).select('_id');
     const teamUserIds = teamUsers.map((u) => u._id);
-    const teamIssuedItems = await issuedItemBreakdown(teamUserIds);
+    const [teamIssuedItems, myIssuedItems] = await Promise.all([
+      issuedItemBreakdown(teamUserIds),
+      issuedItemBreakdown([req.user._id])
+    ]);
 
     return res.json({
       success: true,
-      data: { role: 'manager', teamIssuedItems, totalTickets, pendingTickets, closedTickets }
+      data: { role: 'manager', teamIssuedItems, myIssuedItems, totalTickets, pendingTickets, closedTickets }
     });
   }
 

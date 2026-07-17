@@ -3,7 +3,12 @@ const ApiError = require('../utils/ApiError');
 const Department = require('../models/Department');
 
 exports.list = asyncHandler(async (req, res) => {
-  const departments = await Department.find({ isActive: true }).populate('manager', 'name email').sort({ name: 1 });
+  const filter = { isActive: true };
+  if (req.query.office) filter.office = req.query.office;
+  const departments = await Department.find(filter)
+    .populate('manager', 'name email')
+    .populate({ path: 'office', select: 'name location company', populate: { path: 'company', select: 'name' } })
+    .sort({ name: 1 });
   res.json({ success: true, data: departments });
 });
 

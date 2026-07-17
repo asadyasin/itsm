@@ -53,8 +53,29 @@ Thank you.`
 Your ticket ${ticketNumber} status has changed to: ${status}.
 
 You can view details in the IT Help Desk portal.`
+  }),
+  'ticket-created': ({ recipientName, isRequester, requesterName, ticketNumber, description, ticketLink }) => ({
+    subject: `New IT Support Ticket ${ticketNumber}`,
+    text: `Hello ${recipientName},
+
+${isRequester ? 'Your support ticket has been submitted successfully and is awaiting approval.' : `${requesterName} submitted a new support ticket.`}
+
+Ticket Number: ${ticketNumber}
+Description: ${description}
+
+View the ticket here:
+${ticketLink}
+
+Thank you.`
   })
 };
+
+// Builds the link embedded in ticket emails. Clicking it opens the ticket directly in the app;
+// if the recipient isn't logged in, they're sent to login first and returned here afterward.
+function buildTicketLink(ticketId) {
+  const base = process.env.CLIENT_URL || 'http://localhost:5173';
+  return `${base}/tickets/${ticketId}`;
+}
 
 async function sendTemplateEmail({ to, template, data, relatedTicket = null, relatedItem = null, sentBy = null }) {
   const build = templates[template];
@@ -77,4 +98,4 @@ async function sendTemplateEmail({ to, template, data, relatedTicket = null, rel
   }
 }
 
-module.exports = { sendTemplateEmail };
+module.exports = { sendTemplateEmail, buildTicketLink };

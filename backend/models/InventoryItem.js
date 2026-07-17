@@ -14,8 +14,8 @@ const inventoryItemSchema = new mongoose.Schema(
     status: { type: String, enum: STATUS_VALUES, default: 'Available', index: true },
     currentUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     currentTicket: { type: mongoose.Schema.Types.ObjectId, ref: 'Ticket', default: null },
-    branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', default: null },
-    location: { type: String, trim: true }, // physical location, e.g. "Head Office - 3rd Floor" or "Warehouse A"
+    office: { type: mongoose.Schema.Types.ObjectId, ref: 'Office', default: null }, // copied from the purchase at registration time
+    location: { type: String, trim: true }, // auto-filled from the office's location — never entered manually
     warrantyExpiry: { type: Date, default: null },
     notes: { type: String, trim: true },
     isDeleted: { type: Boolean, default: false } // soft delete only; history is permanent regardless

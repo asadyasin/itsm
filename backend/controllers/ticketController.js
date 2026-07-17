@@ -2,9 +2,10 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const Ticket = require('../models/Ticket');
 const InventoryItem = require('../models/InventoryItem');
+const User = require('../models/User');
 const { logAction } = require('../services/auditService');
 const { notifyUser, notifyRole } = require('../services/notificationService');
-const { sendTemplateEmail } = require('../services/emailService');
+const { sendTemplateEmail, buildTicketLink } = require('../services/emailService');
 
 function scopeFilterForUser(user) {
   if (user.role === 'admin') return {};
@@ -14,10 +15,17 @@ function scopeFilterForUser(user) {
 
 // GET /api/tickets
 exports.list = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, status, priority, department, userId, search, from, to } = req.query;
+  const { page = 1, limit = 20, status, priority, department, userId, search, from, to, scope } = req.query;
   const filter = { isDeleted: false, ...scopeFilterForUser(req.user) };
 
-  if (status) filter.status = status;
+  // Managers can narrow their department-wide view down to just their own tickets, or just their
+  // team's (excluding their own) — the same "mine vs team" split used on the Inventory screen.
+  if (req.user.role === 'manager') {
+    if (scope === 'mine') filter.user = req.user._id;
+    else if (scope === 'team') filter.user = { $ne: req.user._id };
+  }
+
+  if (status) filter.status = status.includes(',') ? { $in: status.split(',') } : status;
   if (priority) filter.priority = priority;
   if (department && req.user.role === 'admin') filter.department = department;
   if (userId && req.user.role !== 'user') filter.user = userId;
@@ -90,6 +98,42 @@ exports.create = asyncHandler(async (req, res) => {
   }
   await notifyRole('admin', { title: 'New ticket created', message: `${ticket.ticketNumber} - ${description.slice(0, 80)}`, link: `/tickets/${ticket._id}` });
 
+  // Email cascade, in order: the requester themselves, then their manager (if any), then every admin.
+  const ticketLink = buildTicketLink(ticket._id);
+  const baseData = { requesterName: req.user.name, ticketNumber: ticket.ticketNumber, description, ticketLink };
+
+  await sendTemplateEmail({
+    to: req.user.email,
+    template: 'ticket-created',
+    relatedTicket: ticket._id,
+    sentBy: req.user._id,
+    data: { ...baseData, recipientName: req.user.name, isRequester: true }
+  });
+
+  if (ticket.manager) {
+    const managerUser = await User.findOne({ _id: ticket.manager, isDeleted: false, isActive: true }).select('name email');
+    if (managerUser) {
+      await sendTemplateEmail({
+        to: managerUser.email,
+        template: 'ticket-created',
+        relatedTicket: ticket._id,
+        sentBy: req.user._id,
+        data: { ...baseData, recipientName: managerUser.name, isRequester: false }
+      });
+    }
+  }
+
+  const admins = await User.find({ role: 'admin', isDeleted: false, isActive: true }).select('name email');
+  for (const admin of admins) {
+    await sendTemplateEmail({
+      to: admin.email,
+      template: 'ticket-created',
+      relatedTicket: ticket._id,
+      sentBy: req.user._id,
+      data: { ...baseData, recipientName: admin.name, isRequester: false }
+    });
+  }
+
   res.status(201).json({ success: true, data: ticket });
 });
 
@@ -161,7 +205,9 @@ exports.assign = asyncHandler(async (req, res) => {
   const { assignedTo } = req.body;
   const ticket = await Ticket.findOne({ _id: req.params.id, isDeleted: false });
   if (!ticket) throw new ApiError(404, 'Ticket not found');
-  if (ticket.status !== 'Manager Approved') throw new ApiError(400, 'Ticket must be manager-approved before assignment');
+  if (!['Manager Approved', 'Reopened'].includes(ticket.status)) {
+    throw new ApiError(400, 'Ticket must be manager-approved (or reopened) before assignment');
+  }
 
   ticket.status = 'Assigned';
   ticket.assignedTo = assignedTo;
@@ -171,11 +217,14 @@ exports.assign = asyncHandler(async (req, res) => {
   res.json({ success: true, data: ticket });
 });
 
-// PATCH /api/tickets/:id/resolve  (admin only) - after item(s) issued
+// PATCH /api/tickets/:id/resolve  (admin only) - after item(s) issued, OR directly from Reopened
+// if no new item needed to be issued (e.g. the reopen was resolved via a comment/repair, not a reissue).
 exports.resolve = asyncHandler(async (req, res) => {
   const ticket = await Ticket.findOne({ _id: req.params.id, isDeleted: false }).populate('user', 'name email');
   if (!ticket) throw new ApiError(404, 'Ticket not found');
-  if (ticket.status !== 'Issued') throw new ApiError(400, 'Ticket must have an item issued before it can be resolved');
+  if (!['Issued', 'Reopened'].includes(ticket.status)) {
+    throw new ApiError(400, 'Ticket must have an item issued (or be reopened) before it can be resolved');
+  }
 
   ticket.status = 'Resolved';
   ticket.resolvedAt = new Date();

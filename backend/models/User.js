@@ -8,7 +8,6 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true, minlength: 8, select: false },
     role: { type: String, enum: ['admin', 'manager', 'user'], default: 'user', index: true },
     department: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', default: null },
-    branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', default: null },
     manager: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     phone: { type: String, trim: true },
     designation: { type: String, trim: true },

@@ -216,7 +216,6 @@ function EditItemDialog({ open, onClose, item, onSaved }) {
       brand: item?.brand || '',
       model: item?.model || '',
       assetTag: item?.assetTag || '',
-      location: item?.location || '',
       warrantyExpiry: item?.warrantyExpiry ? dayjs(item.warrantyExpiry).format('YYYY-MM-DD') : '',
       notes: item?.notes || ''
     }
@@ -238,10 +237,10 @@ function EditItemDialog({ open, onClose, item, onSaved }) {
             <TextField label="Brand" fullWidth {...register('brand')} />
             <TextField label="Model" fullWidth {...register('model')} />
           </Stack>
-          <Stack direction="row" spacing={2}>
-            <TextField label="Asset Tag" fullWidth {...register('assetTag')} />
-            <TextField label="Location" fullWidth placeholder="e.g. Head Office - 3rd Floor" {...register('location')} />
-          </Stack>
+          <TextField label="Asset Tag" fullWidth {...register('assetTag')} />
+          {item?.location && (
+            <TextField label="Location" fullWidth value={item.location} disabled helperText="Set automatically from the purchase's office — not editable here" />
+          )}
           <TextField
             label="Warranty Expiry Date"
             type="date"

@@ -3,21 +3,28 @@ import { Box, Paper, TextField, Button, Typography, Alert, InputAdornment, IconB
 import { useForm } from 'react-hook-form';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
+
+  // If the person arrived here via a redirect (e.g. clicked a ticket link in an email while
+  // logged out), send them back to that exact page after a successful login instead of the dashboard.
+  const redirectTo = location.state?.from?.pathname
+    ? `${location.state.from.pathname}${location.state.from.search || ''}`
+    : '/';
 
   const onSubmit = async (values) => {
     setError('');
     try {
       await login(values.email, values.password);
-      navigate('/');
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to log in. Please check your credentials.');
     }
@@ -36,12 +43,15 @@ export default function LoginPage() {
     >
       <Paper elevation={8} sx={{ width: 400, p: 4, borderRadius: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-          <Box sx={{ width: 42, height: 42, borderRadius: '10px', bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Typography sx={{ color: '#fff', fontWeight: 800 }}>IT</Typography>
-          </Box>
+          <Box
+            component="img"
+            src="/logo.png"
+            alt="10xE logo"
+            sx={{ width: 46, height: 46, objectFit: 'contain' }}
+          />
           <Box>
-            <Typography variant="h6" fontWeight={700} lineHeight={1.1}>Asset Desk</Typography>
-            <Typography variant="caption" color="text.secondary">IT Inventory & Help Desk</Typography>
+            <Typography variant="h6" fontWeight={700} lineHeight={1.1}>10xE Inventory</Typography>
+            <Typography variant="caption" color="text.secondary">IT Help Desk</Typography>
           </Box>
         </Box>
 

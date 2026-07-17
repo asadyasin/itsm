@@ -7,9 +7,11 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCartOutlined';
 import ConfirmationNumberIcon from '@mui/icons-material/ConfirmationNumberOutlined';
 import PeopleIcon from '@mui/icons-material/PeopleOutlined';
 import ApartmentIcon from '@mui/icons-material/ApartmentOutlined';
+import BusinessIcon from '@mui/icons-material/BusinessOutlined';
 import StorefrontIcon from '@mui/icons-material/StorefrontOutlined';
 import AssessmentIcon from '@mui/icons-material/AssessmentOutlined';
 import HistoryIcon from '@mui/icons-material/HistoryOutlined';
+import UploadFileIcon from '@mui/icons-material/UploadFileOutlined';
 import { useAuth } from '../contexts/AuthContext';
 
 export const DRAWER_WIDTH = 248;
@@ -21,9 +23,11 @@ const NAV_ITEMS = [
   { label: 'Categories', to: '/categories', icon: <CategoryIcon />, roles: ['admin'] },
   { label: 'Tickets', to: '/tickets', icon: <ConfirmationNumberIcon />, roles: ['admin', 'manager', 'user'] },
   { label: 'Users', to: '/users', icon: <PeopleIcon />, roles: ['admin'] },
+  { label: 'Company & Offices', to: '/company-setup', icon: <BusinessIcon />, roles: ['admin'] },
   { label: 'Departments', to: '/departments', icon: <ApartmentIcon />, roles: ['admin'] },
   { label: 'Vendors', to: '/vendors', icon: <StorefrontIcon />, roles: ['admin'] },
   { label: 'Reports', to: '/reports', icon: <AssessmentIcon />, roles: ['admin'] },
+  { label: 'Data Import', to: '/data-import', icon: <UploadFileIcon />, roles: ['admin'] },
   { label: 'Audit Log', to: '/audit-log', icon: <HistoryIcon />, roles: ['admin'] }
 ];
 
@@ -35,13 +39,16 @@ export default function Sidebar({ mobileOpen, onClose, variant }) {
   const content = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar sx={{ px: 2.5 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ width: 34, height: 34, borderRadius: '8px', bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Typography sx={{ color: '#fff', fontWeight: 800, fontSize: 16 }}>IT</Typography>
-          </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+          <Box
+            component="img"
+            src="/logo.png"
+            alt="10xE logo"
+            sx={{ width: 36, height: 36, objectFit: 'contain' }}
+          />
           <Box>
-            <Typography variant="subtitle1" fontWeight={700} lineHeight={1.1}>10xE IT</Typography>
-            <Typography variant="caption" color="text.secondary">Inventory & Help Desk</Typography>
+            <Typography variant="subtitle1" fontWeight={700} lineHeight={1.1}>10xE Inventory</Typography>
+            <Typography variant="caption" color="text.secondary">IT Help Desk</Typography>
           </Box>
         </Box>
       </Toolbar>

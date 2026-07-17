@@ -8,6 +8,7 @@ exports.categoryRules = [
 exports.purchaseRules = [
   body('itemCategory').isMongoId().withMessage('Valid item category is required'),
   body('vendor').isMongoId().withMessage('Valid vendor is required'),
+  body('office').isMongoId().withMessage('Office is required'),
   body('quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
   body('purchaseDate').optional().isISO8601()
 ];

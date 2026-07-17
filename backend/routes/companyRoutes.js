@@ -1,13 +1,10 @@
 const router = require('express').Router();
-const ctrl = require('../controllers/vendorController');
-const bulkCtrl = require('../controllers/bulkController');
+const ctrl = require('../controllers/companyController');
 const protect = require('../middlewares/authMiddleware');
 const authorize = require('../middlewares/rbacMiddleware');
-const upload = require('../middlewares/upload');
 
 router.use(protect);
 router.get('/', ctrl.list);
-router.post('/bulk-import', authorize('admin'), upload.single('file'), bulkCtrl.importVendors);
 router.post('/', authorize('admin'), ctrl.create);
 router.patch('/:id', authorize('admin'), ctrl.update);
 router.delete('/:id', authorize('admin'), ctrl.remove);

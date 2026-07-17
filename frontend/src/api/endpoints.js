@@ -1,5 +1,7 @@
 import api from './axios';
 
+const asMultipart = (formData) => ({ headers: { 'Content-Type': 'multipart/form-data' } });
+
 export const authApi = {
   login: (data) => api.post('/auth/login', data),
   logout: () => api.post('/auth/logout'),
@@ -14,11 +16,26 @@ export const userApi = {
   update: (id, data) => api.patch(`/users/${id}`, data),
   toggleActive: (id) => api.patch(`/users/${id}/disable`),
   resetPassword: (id) => api.post(`/users/${id}/reset-password`),
-  remove: (id) => api.delete(`/users/${id}`)
+  remove: (id) => api.delete(`/users/${id}`),
+  bulkImport: (formData) => api.post('/users/bulk-import', formData, asMultipart(formData))
+};
+
+export const companyApi = {
+  list: () => api.get('/companies'),
+  create: (data) => api.post('/companies', data),
+  update: (id, data) => api.patch(`/companies/${id}`, data),
+  remove: (id) => api.delete(`/companies/${id}`)
+};
+
+export const officeApi = {
+  list: (params) => api.get('/offices', { params }),
+  create: (data) => api.post('/offices', data),
+  update: (id, data) => api.patch(`/offices/${id}`, data),
+  remove: (id) => api.delete(`/offices/${id}`)
 };
 
 export const departmentApi = {
-  list: () => api.get('/departments'),
+  list: (params) => api.get('/departments', { params }),
   create: (data) => api.post('/departments', data),
   update: (id, data) => api.patch(`/departments/${id}`, data),
   remove: (id) => api.delete(`/departments/${id}`)
@@ -28,14 +45,16 @@ export const vendorApi = {
   list: (params) => api.get('/vendors', { params }),
   create: (data) => api.post('/vendors', data),
   update: (id, data) => api.patch(`/vendors/${id}`, data),
-  remove: (id) => api.delete(`/vendors/${id}`)
+  remove: (id) => api.delete(`/vendors/${id}`),
+  bulkImport: (formData) => api.post('/vendors/bulk-import', formData, asMultipart(formData))
 };
 
 export const categoryApi = {
   list: () => api.get('/item-categories'),
   create: (data) => api.post('/item-categories', data),
   update: (id, data) => api.patch(`/item-categories/${id}`, data),
-  remove: (id) => api.delete(`/item-categories/${id}`)
+  remove: (id) => api.delete(`/item-categories/${id}`),
+  bulkImport: (formData) => api.post('/item-categories/bulk-import', formData, asMultipart(formData))
 };
 
 export const purchaseApi = {
@@ -43,7 +62,8 @@ export const purchaseApi = {
   get: (id) => api.get(`/purchases/${id}`),
   create: (data) => api.post('/purchases', data),
   update: (id, data) => api.patch(`/purchases/${id}`, data),
-  remove: (id) => api.delete(`/purchases/${id}`)
+  remove: (id) => api.delete(`/purchases/${id}`),
+  bulkImport: (formData) => api.post('/purchases/bulk-import', formData, asMultipart(formData))
 };
 
 export const inventoryApi = {
@@ -57,7 +77,7 @@ export const inventoryApi = {
   transfer: (id, data) => api.post(`/inventory/items/${id}/transfer`, data),
   scrap: (id, data) => api.post(`/inventory/items/${id}/scrap`, data),
   updateStatus: (id, data) => api.patch(`/inventory/items/${id}/status`, data),
-  bulkImport: (formData) => api.post('/inventory/items/bulk-import', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  bulkImport: (formData) => api.post('/inventory/items/bulk-import', formData, asMultipart(formData)),
   bulkExport: (format) => api.get('/inventory/items/bulk-export', { params: { format }, responseType: 'blob' })
 };
 

@@ -11,9 +11,11 @@ import TicketListPage from './pages/TicketListPage';
 import TicketCreatePage from './pages/TicketCreatePage';
 import TicketDetailPage from './pages/TicketDetailPage';
 import UsersPage from './pages/UsersPage';
+import CompanySetupPage from './pages/CompanySetupPage';
 import DepartmentsPage from './pages/DepartmentsPage';
 import VendorsPage from './pages/VendorsPage';
 import ReportsPage from './pages/ReportsPage';
+import DataImportPage from './pages/DataImportPage';
 import AuditLogPage from './pages/AuditLogPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import SearchResultsPage from './pages/SearchResultsPage';
@@ -35,9 +37,11 @@ export default function App() {
           <Route path="/tickets/new" element={<TicketCreatePage />} />
           <Route path="/tickets/:id" element={<TicketDetailPage />} />
           <Route path="/users" element={<RequireRole roles={['admin']}><UsersPage /></RequireRole>} />
+          <Route path="/company-setup" element={<RequireRole roles={['admin']}><CompanySetupPage /></RequireRole>} />
           <Route path="/departments" element={<RequireRole roles={['admin']}><DepartmentsPage /></RequireRole>} />
           <Route path="/vendors" element={<RequireRole roles={['admin']}><VendorsPage /></RequireRole>} />
           <Route path="/reports" element={<RequireRole roles={['admin']}><ReportsPage /></RequireRole>} />
+          <Route path="/data-import" element={<RequireRole roles={['admin']}><DataImportPage /></RequireRole>} />
           <Route path="/audit-log" element={<RequireRole roles={['admin']}><AuditLogPage /></RequireRole>} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/search" element={<SearchResultsPage />} />

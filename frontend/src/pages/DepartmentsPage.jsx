@@ -7,7 +7,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useForm, Controller } from 'react-hook-form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
-import { departmentApi, userApi } from '../api/endpoints';
+import { departmentApi, userApi, officeApi } from '../api/endpoints';
 import { useConfirm } from '../hooks/useConfirm';
 
 export default function DepartmentsPage() {
@@ -19,8 +19,17 @@ export default function DepartmentsPage() {
 
   const { data, isLoading } = useQuery({ queryKey: ['departments'], queryFn: () => departmentApi.list().then((r) => r.data.data) });
   const { data: users } = useQuery({ queryKey: ['users', 'for-manager-select'], queryFn: () => userApi.list({ limit: 100 }).then((r) => r.data.data) });
+  const { data: offices } = useQuery({ queryKey: ['offices'], queryFn: () => officeApi.list().then((r) => r.data.data) });
 
-  const rows = (data || []).map((d) => ({ id: d._id, name: d.name, code: d.code || '—', manager: d.manager?.name || '—', raw: d }));
+  const rows = (data || []).map((d) => ({
+    id: d._id,
+    name: d.name,
+    code: d.code || '—',
+    office: d.office?.name || '—',
+    company: d.office?.company?.name || '—',
+    manager: d.manager?.name || '—',
+    raw: d
+  }));
 
   const handleDelete = async (dept) => {
     const ok = await confirm(`Deactivate department "${dept.name}"?`);
@@ -31,9 +40,11 @@ export default function DepartmentsPage() {
   };
 
   const columns = [
-    { field: 'name', headerName: 'Department', flex: 1, minWidth: 180 },
-    { field: 'code', headerName: 'Code', width: 100 },
-    { field: 'manager', headerName: 'Manager', width: 180 },
+    { field: 'name', headerName: 'Department', flex: 1, minWidth: 150 },
+    { field: 'office', headerName: 'Office', width: 140 },
+    { field: 'company', headerName: 'Company', width: 140 },
+    { field: 'code', headerName: 'Code', width: 90 },
+    { field: 'manager', headerName: 'Manager', width: 150 },
     {
       field: 'actions', headerName: '', width: 100, sortable: false,
       renderCell: (params) => (
@@ -49,8 +60,13 @@ export default function DepartmentsPage() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="h5" fontWeight={700}>Departments</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>New Department</Button>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)} disabled={!offices?.length}>New Department</Button>
       </Stack>
+      {!offices?.length && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Create a Company and at least one Office first, under "Company & Offices".
+        </Typography>
+      )}
 
       <Card>
         <CardContent sx={{ p: 0 }}>
@@ -58,17 +74,19 @@ export default function DepartmentsPage() {
         </CardContent>
       </Card>
 
-      <DepartmentDialog open={open} users={users} onClose={() => setOpen(false)} onSaved={() => qc.invalidateQueries({ queryKey: ['departments'] })} />
-      <DepartmentDialog open={!!editTarget} department={editTarget} users={users} onClose={() => setEditTarget(null)} onSaved={() => qc.invalidateQueries({ queryKey: ['departments'] })} />
+      <DepartmentDialog open={open} users={users} offices={offices} onClose={() => setOpen(false)} onSaved={() => qc.invalidateQueries({ queryKey: ['departments'] })} />
+      <DepartmentDialog open={!!editTarget} department={editTarget} users={users} offices={offices} onClose={() => setEditTarget(null)} onSaved={() => qc.invalidateQueries({ queryKey: ['departments'] })} />
     </Box>
   );
 }
 
-function DepartmentDialog({ open, department, users, onClose, onSaved }) {
+function DepartmentDialog({ open, department, users, offices, onClose, onSaved }) {
   const { enqueueSnackbar } = useSnackbar();
   const isEdit = !!department;
   const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm({
-    values: isEdit ? { name: department.name, code: department.code || '', manager: department.manager?._id || '' } : undefined
+    values: isEdit
+      ? { name: department.name, code: department.code || '', office: department.office?._id || department.office || '', manager: department.manager?._id || '' }
+      : undefined
   });
 
   const submit = async (values) => {
@@ -91,6 +109,18 @@ function DepartmentDialog({ open, department, users, onClose, onSaved }) {
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField label="Department name" error={!!errors.name} {...register('name', { required: true })} autoFocus />
+          <Controller
+            name="office"
+            control={control}
+            rules={{ required: true }}
+            render={({ field }) => (
+              <TextField {...field} select label="Office" error={!!errors.office} fullWidth>
+                {(offices || []).map((o) => (
+                  <MenuItem key={o._id} value={o._id}>{o.name} ({o.company?.name})</MenuItem>
+                ))}
+              </TextField>
+            )}
+          />
           <TextField label="Code" {...register('code')} />
           <Controller
             name="manager"
