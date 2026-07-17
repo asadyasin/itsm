@@ -5,10 +5,17 @@ const { signAccessToken, signRefreshToken, verifyRefreshToken, hashToken } = req
 const { logAction } = require('../services/auditService');
 
 function refreshCookieOptions() {
+  const isProd = process.env.NODE_ENV === 'production';
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    // In production the frontend (Vercel) and backend (Render) are on different domains,
+    // which browsers treat as "cross-site". SameSite=None is required for the cookie to be
+    // sent at all in that case, and SameSite=None is only honored by browsers when Secure
+    // is also set (i.e. served over HTTPS, which both Vercel and Render do by default).
+    // In local dev, localhost:5173 <-> localhost:5000 is same-site (port is ignored), so
+    // 'lax' works fine there and doesn't require HTTPS.
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     path: '/api/auth/refresh',
     maxAge: 7 * 24 * 60 * 60 * 1000
   };
@@ -73,7 +80,7 @@ exports.logout = asyncHandler(async (req, res) => {
       // token already invalid, nothing to clean up
     }
   }
-  res.clearCookie('refreshToken', { path: '/api/auth/refresh' });
+  res.clearCookie('refreshToken', refreshCookieOptions());
   res.json({ success: true, message: 'Logged out' });
 });
 

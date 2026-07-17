@@ -72,21 +72,71 @@ npm run dev                 # starts on http://localhost:5173
 
 The Vite dev server proxies `/api` and `/uploads` to `http://localhost:5000`, so no CORS config is needed locally.
 
-### Production build
+### Production build (local)
 
 ```bash
 cd frontend && npm run build   # outputs static files to frontend/dist
 ```
-Serve `frontend/dist` behind your reverse proxy (nginx, etc.) and point it at the backend API; set `CLIENT_URL` in the backend `.env` to your deployed frontend origin.
 
-## 5. Key design decisions
+## 5. Deploying: Vercel (frontend) + Render (backend)
+
+**Why two services?** Vercel is built for static sites and short-lived serverless functions. This
+backend uses Socket.IO (persistent WebSocket connections) and writes ticket attachments to local
+disk — neither works reliably on Vercel's serverless model. Render (or Railway/Fly.io) runs a
+normal long-lived Node process, which this app is built for. The frontend, being a static Vite
+build, deploys to Vercel with zero issues.
+
+> **Known limitation**: ticket attachments are stored on local disk. Render's free-tier disk is
+> ephemeral — uploaded files are lost on redeploy/restart. Fine for testing; for real production
+> use, swap `middlewares/upload.js` to write to S3/Cloudinary instead (the multer setup is
+> already isolated there, so this is a contained change).
+
+### Step 1 — MongoDB Atlas
+Create a free cluster at [mongodb.com/atlas](https://www.mongodb.com/atlas). Under **Network
+Access**, allow `0.0.0.0/0` (Render's free tier doesn't have a fixed outbound IP). Copy the
+connection string for `MONGO_URI`.
+
+### Step 2 — Backend on Render
+1. Push this repo to GitHub.
+2. In Render: **New → Web Service** → connect the repo. If prompted, it'll pick up
+   `backend/render.yaml` automatically; otherwise set manually:
+   - **Root Directory**: `backend`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+3. Add environment variables (see `backend/.env.example` for the full list) — at minimum:
+   `MONGO_URI`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `NODE_ENV=production`, and `CLIENT_URL`
+   (you'll fill this in after Step 3, once you know your Vercel URL).
+4. Deploy. Note the resulting URL, e.g. `https://itsm-backend.onrender.com`.
+5. Run the seed script once via Render's shell tab: `npm run seed`.
+
+### Step 3 — Frontend on Vercel
+1. In Vercel: **New Project** → import the same GitHub repo.
+2. Set **Root Directory** to `frontend` (this is a monorepo — Vercel needs to know where the
+   Vite app lives).
+3. Framework preset: **Vite**. Build command `npm run build`, output directory `dist` (Vercel
+   usually detects these automatically).
+4. Add environment variables:
+   - `VITE_API_URL` = `https://itsm-backend.onrender.com/api`
+   - `VITE_SOCKET_URL` = `https://itsm-backend.onrender.com`
+5. Deploy. Note your Vercel URL, e.g. `https://itsm.vercel.app`.
+
+### Step 4 — Close the loop
+Go back to Render and set `CLIENT_URL=https://itsm.vercel.app` (comma-separate multiple values if
+you also want to allow a Vercel preview URL or `localhost` for continued local testing). Redeploy
+the backend so the new CORS setting takes effect.
+
+Log in at your Vercel URL with the seeded admin (`admin@company.com` / `Admin@12345`) and change
+that password immediately.
+
+## 6. Key design decisions
 
 - **Append-only history**: `InventoryHistory` and `AuditLog` are never updated or deleted from the application layer — every asset has a complete, tamper-evident timeline.
 - **Soft deletes**: Users, purchases, inventory items, and tickets use an `isDeleted` flag rather than physical deletion, per the spec.
 - **Refresh token rotation**: each refresh call issues a new refresh token and invalidates the old one (hash stored server-side), reducing replay risk.
 - **Role scoping is enforced server-side** (not just hidden in the UI) — e.g., a manager's ticket/user queries are always filtered to their department at the controller level.
+- **Cross-domain cookies**: the refresh-token cookie uses `SameSite=None; Secure` in production since the frontend (Vercel) and backend (Render) are on different domains — this only works over HTTPS, which both platforms provide by default.
 
-## 6. API reference
+## 7. API reference
 
 All endpoints are under `/api`. Auth: `Authorization: Bearer <accessToken>` header (access token refreshed transparently via httpOnly cookie). Representative endpoints:
 

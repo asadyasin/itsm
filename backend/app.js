@@ -12,13 +12,17 @@ const path = require('path');
 const routes = require('./routes');
 const { notFound, errorHandler } = require('./middlewares/errorHandler');
 const { apiLimiter } = require('./middlewares/security');
+const { corsOriginCheck } = require('./utils/corsOrigins');
 const logger = require('./utils/logger');
 
 const app = express();
 
+// Vercel/Render sit behind a reverse proxy - trust it so req.ip and secure cookies behave correctly.
+app.set('trust proxy', 1);
+
 // --- Security & core middleware ---
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+app.use(cors({ origin: corsOriginCheck, credentials: true }));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

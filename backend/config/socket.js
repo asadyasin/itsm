@@ -1,10 +1,11 @@
 const { Server } = require('socket.io');
 const { verifyAccessToken } = require('../utils/tokens');
+const { getAllowedOrigins } = require('../utils/corsOrigins');
 const logger = require('../utils/logger');
 
 function initSocket(httpServer) {
   const io = new Server(httpServer, {
-    cors: { origin: process.env.CLIENT_URL, credentials: true }
+    cors: { origin: getAllowedOrigins(), credentials: true }
   });
 
   io.use((socket, next) => {
