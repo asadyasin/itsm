@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Box, Typography, Button, Stack, Card, CardContent, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, MenuItem, Switch, Alert, IconButton
+  DialogActions, TextField, MenuItem, Switch, Alert, IconButton, Chip
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
@@ -32,6 +32,7 @@ export default function UsersPage() {
     role: u.role,
     department: u.department?.name || '—',
     isActive: u.isActive,
+    authProvider: u.authProvider || 'local',
     raw: u
   }));
 
@@ -60,6 +61,10 @@ export default function UsersPage() {
     { field: 'email', headerName: 'Email', width: 220 },
     { field: 'role', headerName: 'Role', width: 110 },
     { field: 'department', headerName: 'Department', width: 160 },
+    {
+      field: 'authProvider', headerName: 'Sign-in', width: 100,
+      renderCell: (p) => <Chip size="small" label={p.value === 'google' ? 'Google' : 'Local'} color={p.value === 'google' ? 'info' : 'default'} variant="outlined" />
+    },
     {
       field: 'isActive', headerName: 'Active', width: 90,
       renderCell: (p) => <Switch size="small" checked={p.value} onChange={() => toggleActive(p.row.id)} onClick={(e) => e.stopPropagation()} />

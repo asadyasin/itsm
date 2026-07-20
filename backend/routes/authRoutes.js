@@ -3,9 +3,10 @@ const ctrl = require('../controllers/authController');
 const protect = require('../middlewares/authMiddleware');
 const validate = require('../middlewares/validate');
 const { authLimiter } = require('../middlewares/security');
-const { loginRules, changePasswordRules } = require('../validators/authValidators');
+const { loginRules, changePasswordRules, googleLoginRules } = require('../validators/authValidators');
 
 router.post('/login', authLimiter, loginRules, validate, ctrl.login);
+router.post('/google', authLimiter, googleLoginRules, validate, ctrl.googleLogin);
 router.post('/refresh', ctrl.refresh);
 router.post('/logout', ctrl.logout);
 router.get('/me', protect, ctrl.getMe);

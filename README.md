@@ -10,6 +10,7 @@ A full-stack, role-based IT asset inventory and help-desk ticketing platform.
 
 - **Org hierarchy**: Company → Office → Department → User. Set up under "Company & Offices" (admin). Every office has a `location`, and that location is **automatically applied** to any inventory item registered against a purchase made for that office — nobody types a location by hand.
 - **Auth & RBAC**: JWT access + httpOnly refresh-token rotation, bcrypt hashing, 3 roles (`admin`, `manager`, `user`) enforced on every route.
+- **Google Workspace sign-in**: "Sign in with Google" auto-creates an account on first login (default role `user`, no department) — no manual account creation needed beforehand. An admin then assigns the real role/department from the Users page. Optionally restrict sign-in to your company's Workspace domain only (see Setup below). Existing local (email/password) accounts can also sign in with Google if the emails match — the accounts get linked automatically.
 - **Inventory lifecycle**: Categories → Purchases (tied to an Office) → individual serialized units → Issue / Return / Transfer / Repair / Lost / Reserved / Scrap, each write producing an **immutable** `InventoryHistory` timeline entry (nothing is ever hard-deleted). Deleting a purchase cascades to its registered serial numbers (soft-deleted, history preserved) — blocked if any of them are currently issued.
 - **Ticket workflow**: Create → Manager Approve/Reject → Admin Assign → Issue Item (linked to ticket) → Resolve → Close → **Reopen** (re-enters the fulfillment queue — admin can issue a replacement item or resolve directly, it doesn't dead-end at "close only"), with comments and file attachments. Issuing an item **always** requires an approved ticket — there's no bypass path from the Inventory screen.
 - **Dashboard**: role-scoped — admins see full org-wide stats + charts; managers see ticket counts plus their **own** issued items separately from their **team's** issued items; regular users see their own tickets and issued items only. Every admin stat card is clickable and routes to the filtered underlying screen.
@@ -72,6 +73,18 @@ npm run dev                 # starts on http://localhost:5173
 
 The Vite dev server proxies `/api` and `/uploads` to `http://localhost:5000`, so no CORS config is needed locally.
 
+### Google Workspace sign-in (optional)
+
+1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), create an **OAuth 2.0 Client ID** (Application type: **Web application**).
+2. Under **Authorized JavaScript origins**, add every URL the frontend will be served from, e.g. `http://localhost:5173` and your production domain. No redirect URI is needed — this uses Google Identity Services' token flow, not a server-side redirect.
+3. Copy the Client ID into **both**:
+   - `backend/.env` → `GOOGLE_CLIENT_ID`
+   - `frontend/.env` → `VITE_GOOGLE_CLIENT_ID`
+4. Optional: set `GOOGLE_WORKSPACE_DOMAIN` in `backend/.env` to your company's domain (e.g. `10xengineers.com`) to block sign-in from personal Gmail accounts and only allow your Workspace users.
+5. Restart both servers. A "Sign in with Google" button appears on the login page automatically once `VITE_GOOGLE_CLIENT_ID` is set — leave it unset to hide the button and use email/password only.
+
+First-time Google sign-in auto-creates the account with the default `user` role and no department assigned; go to **Users** as an admin to assign the real role/department afterward.
+
 ### Production build (local)
 
 ```bash
@@ -118,12 +131,17 @@ connection string for `MONGO_URI`.
 4. Add environment variables:
    - `VITE_API_URL` = `https://itsm-backend.onrender.com/api`
    - `VITE_SOCKET_URL` = `https://itsm-backend.onrender.com`
+   - `VITE_GOOGLE_CLIENT_ID` = (same Client ID as the backend's `GOOGLE_CLIENT_ID`, if using Google sign-in)
 5. Deploy. Note your Vercel URL, e.g. `https://itsm.vercel.app`.
 
 ### Step 4 — Close the loop
 Go back to Render and set `CLIENT_URL=https://itsm.vercel.app` (comma-separate multiple values if
 you also want to allow a Vercel preview URL or `localhost` for continued local testing). Redeploy
 the backend so the new CORS setting takes effect.
+
+If using Google sign-in, also add `https://itsm.vercel.app` to the OAuth Client's **Authorized
+JavaScript origins** in Google Cloud Console — otherwise Google will reject the sign-in request
+from your live domain even though it worked locally.
 
 Log in at your Vercel URL with the seeded admin (`admin@company.com` / `Admin@12345`) and change
 that password immediately.

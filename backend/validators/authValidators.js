@@ -9,3 +9,7 @@ exports.changePasswordRules = [
   body('currentPassword').notEmpty(),
   body('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters')
 ];
+
+exports.googleLoginRules = [
+  body('credential').notEmpty().withMessage('Missing Google credential')
+];

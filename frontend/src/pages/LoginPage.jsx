@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { Box, Paper, TextField, Button, Typography, Alert, InputAdornment, IconButton } from '@mui/material';
+import { Box, Paper, TextField, Button, Typography, Alert, InputAdornment, IconButton, Divider } from '@mui/material';
 import { useForm } from 'react-hook-form';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
 
+const googleConfigured = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [error, setError] = useState('');
@@ -27,6 +30,20 @@ export default function LoginPage() {
       navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to log in. Please check your credentials.');
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    try {
+      const result = await loginWithGoogle(credentialResponse.credential);
+      navigate(redirectTo, { replace: true });
+      if (result.isNewUser) {
+        // A brand-new account was just auto-created with the default 'user' role — nothing
+        // further needed here, but an admin will want to assign a real role/department soon.
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to sign in with Google.');
     }
   };
 
@@ -60,6 +77,23 @@ export default function LoginPage() {
         </Typography>
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+        {googleConfigured && (
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setError('Google sign-in failed. Please try again.')}
+                text="signin_with"
+                shape="rectangular"
+                width="336"
+              />
+            </Box>
+            <Divider sx={{ my: 2 }}>
+              <Typography variant="caption" color="text.secondary">OR</Typography>
+            </Divider>
+          </>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <TextField
