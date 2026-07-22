@@ -58,8 +58,13 @@ export default function InventoryDetailPage() {
     if (!transferUser) return;
     await transfer.mutateAsync({ id: item._id, toUserId: transferUser._id });
     enqueueSnackbar('Item transferred', { variant: 'success' });
-    setTransferOpen(false);
+    closeTransferDialog();
     refetch();
+  };
+
+  const closeTransferDialog = () => {
+    setTransferOpen(false);
+    setTransferUser(null);
   };
 
   const handleApplyStatus = async () => {
@@ -187,7 +192,7 @@ export default function InventoryDetailPage() {
         </Grid>
       </Grid>
 
-      <Dialog open={transferOpen} onClose={() => setTransferOpen(false)} fullWidth maxWidth="xs">
+      <Dialog open={transferOpen} onClose={closeTransferDialog} fullWidth maxWidth="xs">
         <DialogTitle>Transfer Asset</DialogTitle>
         <DialogContent>
           <Autocomplete
@@ -199,12 +204,12 @@ export default function InventoryDetailPage() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setTransferOpen(false)}>Cancel</Button>
+          <Button onClick={closeTransferDialog}>Cancel</Button>
           <Button variant="contained" onClick={handleTransfer}>Transfer</Button>
         </DialogActions>
       </Dialog>
 
-      <EditItemDialog open={editOpen} onClose={() => setEditOpen(false)} item={item} onSaved={refetch} />
+      {editOpen && <EditItemDialog open={editOpen} onClose={() => setEditOpen(false)} item={item} onSaved={refetch} />}
     </Box>
   );
 }

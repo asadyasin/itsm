@@ -144,11 +144,13 @@ export default function InventoryListPage() {
         />
       </Box>
 
-      <IssueDialog
-        open={issueOpen}
-        onClose={() => setIssueOpen(false)}
-        onIssued={() => { refetch(); enqueueSnackbar('Item issued successfully', { variant: 'success' }); }}
-      />
+      {issueOpen && (
+        <IssueDialog
+          open={issueOpen}
+          onClose={() => setIssueOpen(false)}
+          onIssued={() => { refetch(); enqueueSnackbar('Item issued successfully', { variant: 'success' }); }}
+        />
+      )}
     </Box>
   );
 }

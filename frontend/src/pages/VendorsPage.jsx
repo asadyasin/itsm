@@ -57,8 +57,8 @@ export default function VendorsPage() {
         </CardContent>
       </Card>
 
-      <VendorDialog open={open} onClose={() => setOpen(false)} onSaved={() => qc.invalidateQueries({ queryKey: ['vendors'] })} />
-      <VendorDialog open={!!editTarget} vendor={editTarget} onClose={() => setEditTarget(null)} onSaved={() => qc.invalidateQueries({ queryKey: ['vendors'] })} />
+      {open && <VendorDialog open={open} onClose={() => setOpen(false)} onSaved={() => qc.invalidateQueries({ queryKey: ['vendors'] })} />}
+      {editTarget && <VendorDialog open={!!editTarget} vendor={editTarget} onClose={() => setEditTarget(null)} onSaved={() => qc.invalidateQueries({ queryKey: ['vendors'] })} />}
     </Box>
   );
 }

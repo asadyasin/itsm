@@ -106,8 +106,8 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      <UserDialog open={open} departments={departments} onClose={() => setOpen(false)} onSaved={invalidateUsers} />
-      <UserDialog open={!!editTarget} user={editTarget} departments={departments} onClose={() => setEditTarget(null)} onSaved={invalidateUsers} />
+      {open && <UserDialog open={open} departments={departments} onClose={() => setOpen(false)} onSaved={invalidateUsers} />}
+      {editTarget && <UserDialog open={!!editTarget} user={editTarget} departments={departments} onClose={() => setEditTarget(null)} onSaved={invalidateUsers} />}
     </Box>
   );
 }

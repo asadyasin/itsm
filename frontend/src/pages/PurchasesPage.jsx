@@ -86,9 +86,9 @@ export default function PurchasesPage() {
         </CardContent>
       </Card>
 
-      <CreatePurchaseDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={refetch} />
-      <CreatePurchaseDialog open={!!editTarget} purchase={editTarget} onClose={() => setEditTarget(null)} onCreated={refetch} />
-      <AddUnitsDialog purchase={unitsTarget} onClose={() => setUnitsTarget(null)} onDone={refetch} />
+      {createOpen && <CreatePurchaseDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={refetch} />}
+      {editTarget && <CreatePurchaseDialog open={!!editTarget} purchase={editTarget} onClose={() => setEditTarget(null)} onCreated={refetch} />}
+      {unitsTarget && <AddUnitsDialog purchase={unitsTarget} onClose={() => setUnitsTarget(null)} onDone={refetch} />}
     </Box>
   );
 }

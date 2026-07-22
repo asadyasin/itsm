@@ -57,8 +57,8 @@ export default function CategoriesPage() {
         </CardContent>
       </Card>
 
-      <CategoryDialog open={open} onClose={() => setOpen(false)} onSaved={() => qc.invalidateQueries({ queryKey: ['categories'] })} />
-      <CategoryDialog open={!!editTarget} category={editTarget} onClose={() => setEditTarget(null)} onSaved={() => qc.invalidateQueries({ queryKey: ['categories'] })} />
+      {open && <CategoryDialog open={open} onClose={() => setOpen(false)} onSaved={() => qc.invalidateQueries({ queryKey: ['categories'] })} />}
+      {editTarget && <CategoryDialog open={!!editTarget} category={editTarget} onClose={() => setEditTarget(null)} onSaved={() => qc.invalidateQueries({ queryKey: ['categories'] })} />}
     </Box>
   );
 }

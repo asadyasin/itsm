@@ -74,8 +74,8 @@ export default function DepartmentsPage() {
         </CardContent>
       </Card>
 
-      <DepartmentDialog open={open} users={users} offices={offices} onClose={() => setOpen(false)} onSaved={() => qc.invalidateQueries({ queryKey: ['departments'] })} />
-      <DepartmentDialog open={!!editTarget} department={editTarget} users={users} offices={offices} onClose={() => setEditTarget(null)} onSaved={() => qc.invalidateQueries({ queryKey: ['departments'] })} />
+      {open && <DepartmentDialog open={open} users={users} offices={offices} onClose={() => setOpen(false)} onSaved={() => qc.invalidateQueries({ queryKey: ['departments'] })} />}
+      {editTarget && <DepartmentDialog open={!!editTarget} department={editTarget} users={users} offices={offices} onClose={() => setEditTarget(null)} onSaved={() => qc.invalidateQueries({ queryKey: ['departments'] })} />}
     </Box>
   );
 }

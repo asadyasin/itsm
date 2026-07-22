@@ -42,6 +42,11 @@ export default function TicketDetailPage() {
     refetch();
   };
 
+  const closeRejectDialog = () => {
+    setRejectOpen(false);
+    setRejectReason('');
+  };
+
   const submitComment = async () => {
     if (!comment.trim()) return;
     await ticketApi.addComment(id, { message: comment });
@@ -169,21 +174,20 @@ export default function TicketDetailPage() {
         </Grid>
       </Grid>
 
-      <Dialog open={rejectOpen} onClose={() => setRejectOpen(false)} fullWidth maxWidth="xs">
+      <Dialog open={rejectOpen} onClose={closeRejectDialog} fullWidth maxWidth="xs">
         <DialogTitle>Reject Ticket</DialogTitle>
         <DialogContent>
           <TextField label="Reason for rejection" fullWidth multiline rows={3} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} sx={{ mt: 1 }} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setRejectOpen(false)}>Cancel</Button>
+          <Button onClick={closeRejectDialog}>Cancel</Button>
           <Button
             variant="contained"
             color="error"
             disabled={!rejectReason.trim()}
             onClick={async () => {
               await act(() => reject.mutateAsync({ id: ticket._id, reason: rejectReason }), 'Ticket rejected');
-              setRejectOpen(false);
-              setRejectReason('');
+              closeRejectDialog();
             }}
           >
             Reject Ticket
@@ -191,7 +195,9 @@ export default function TicketDetailPage() {
         </DialogActions>
       </Dialog>
 
-      <IssueForTicketDialog open={issueOpen} onClose={() => setIssueOpen(false)} ticket={ticket} onIssued={() => { refetch(); setIssueOpen(false); }} />
+      {issueOpen && (
+        <IssueForTicketDialog open={issueOpen} onClose={() => setIssueOpen(false)} ticket={ticket} onIssued={() => { refetch(); setIssueOpen(false); }} />
+      )}
     </Box>
   );
 }

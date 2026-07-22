@@ -106,11 +106,11 @@ export default function CompanySetupPage() {
         </Grid>
       </Grid>
 
-      <CompanyDialog open={companyDialogOpen} onClose={() => setCompanyDialogOpen(false)} onSaved={invalidateCompanies} />
-      <CompanyDialog open={!!companyEditTarget} company={companyEditTarget} onClose={() => setCompanyEditTarget(null)} onSaved={invalidateCompanies} />
+      {companyDialogOpen && <CompanyDialog open={companyDialogOpen} onClose={() => setCompanyDialogOpen(false)} onSaved={invalidateCompanies} />}
+      {companyEditTarget && <CompanyDialog open={!!companyEditTarget} company={companyEditTarget} onClose={() => setCompanyEditTarget(null)} onSaved={invalidateCompanies} />}
 
-      <OfficeDialog open={officeDialogOpen} companies={companies} onClose={() => setOfficeDialogOpen(false)} onSaved={invalidateOffices} />
-      <OfficeDialog open={!!officeEditTarget} office={officeEditTarget} companies={companies} onClose={() => setOfficeEditTarget(null)} onSaved={invalidateOffices} />
+      {officeDialogOpen && <OfficeDialog open={officeDialogOpen} companies={companies} onClose={() => setOfficeDialogOpen(false)} onSaved={invalidateOffices} />}
+      {officeEditTarget && <OfficeDialog open={!!officeEditTarget} office={officeEditTarget} companies={companies} onClose={() => setOfficeEditTarget(null)} onSaved={invalidateOffices} />}
     </Box>
   );
 }
