@@ -68,7 +68,7 @@ function ChipIllustration() {
 
       {/* chip body */}
       <rect x="140" y="140" width="120" height="120" rx="14" fill="#141C2E" stroke="#F2A93B" strokeWidth="2.5" />
-      <rect x="160" y="160" width="80" height="80" rx="6" fill="none" stroke="rgba(242,169,59,0.4)" strokeWidth="1" />
+      <rect x="160" y="160" width="80" height="80" rx="6" fill="none" stroke="rgba(242, 169, 59, 0)" strokeWidth="1" />
       <text x="200" y="206" textAnchor="middle" fontFamily="'Space Grotesk', sans-serif" fontWeight="700" fontSize="20" fill="#F2A93B">10x</text>
     </Box>
   );
