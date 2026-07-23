@@ -4,6 +4,7 @@ import {
   Typography, ListItemIcon, Divider, useMediaQuery
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { useQuery } from '@tanstack/react-query';
 import MenuIcon from '@mui/icons-material/Menu';
 import SearchIcon from '@mui/icons-material/Search';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
@@ -16,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useColorMode } from '../contexts/ColorModeContext';
 import { DRAWER_WIDTH } from './Sidebar';
 import NotificationPanel from './NotificationPanel';
+import { notificationApi } from '../api/endpoints';
 
 export default function Navbar({ onMenuClick }) {
   const theme = useTheme();
@@ -27,6 +29,15 @@ export default function Navbar({ onMenuClick }) {
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const [notifAnchor, setNotifAnchor] = useState(null);
   const [search, setSearch] = useState('');
+
+  // Shares the same 'notifications' query key as NotificationPanel, so marking all as read
+  // (or a new notification arriving over the socket) invalidates this too and the dot updates
+  // immediately without needing the panel to be open.
+  const { data: notifData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => notificationApi.list().then((r) => r.data)
+  });
+  const hasUnread = (notifData?.meta?.unreadCount || 0) > 0;
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -81,7 +92,7 @@ export default function Navbar({ onMenuClick }) {
         </IconButton>
 
         <IconButton onClick={(e) => setNotifAnchor(e.currentTarget)} aria-label="Notifications">
-          <Badge color="error" variant="dot" invisible={false}>
+          <Badge color="error" variant="dot" invisible={!hasUnread}>
             <NotificationsNoneIcon />
           </Badge>
         </IconButton>

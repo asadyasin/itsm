@@ -1,13 +1,11 @@
 import { Popover, Box, Typography, List, ListItemButton, ListItemText, Divider, Button } from '@mui/material';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { notificationApi } from '../api/endpoints';
-import { useSocket } from '../contexts/SocketContext';
 import dayjs from '../utils/dayjs';
 
 export default function NotificationPanel({ anchorEl, onClose }) {
   const open = Boolean(anchorEl);
   const qc = useQueryClient();
-  const socket = useSocket();
 
   const { data } = useQuery({
     queryKey: ['notifications'],
@@ -21,7 +19,6 @@ export default function NotificationPanel({ anchorEl, onClose }) {
   };
 
   const items = data?.data || [];
-  const live = socket?.liveNotifications || [];
 
   return (
     <Popover
@@ -38,16 +35,6 @@ export default function NotificationPanel({ anchorEl, onClose }) {
         </Box>
         <Divider />
         <List sx={{ maxHeight: 360, overflowY: 'auto', py: 0 }}>
-          {live.map((n, i) => (
-            <ListItemButton key={`live-${i}`} divider>
-              <ListItemText
-                primary={n.title}
-                secondary={n.message}
-                primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }}
-                secondaryTypographyProps={{ fontSize: 12 }}
-              />
-            </ListItemButton>
-          ))}
           {items.map((n) => (
             <ListItemButton key={n._id} divider selected={!n.isRead}>
               <ListItemText
@@ -58,7 +45,7 @@ export default function NotificationPanel({ anchorEl, onClose }) {
               />
             </ListItemButton>
           ))}
-          {items.length === 0 && live.length === 0 && (
+          {items.length === 0 && (
             <Box sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary">No notifications yet</Typography>
             </Box>

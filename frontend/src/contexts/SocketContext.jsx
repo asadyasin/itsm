@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './AuthContext';
 import { getAccessToken } from '../api/axios';
 
@@ -9,7 +10,7 @@ export function SocketProvider({ children }) {
   const { user } = useAuth();
   const socketRef = useRef(null);
   const [connected, setConnected] = useState(false);
-  const [liveNotifications, setLiveNotifications] = useState([]);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!user) return undefined;
@@ -21,15 +22,17 @@ export function SocketProvider({ children }) {
 
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
-    socket.on('notification', (payload) => {
-      setLiveNotifications((prev) => [payload, ...prev].slice(0, 20));
+    socket.on('notification', () => {
+      // The notification is already persisted server-side by the time this event fires —
+      // just refetch so the unread count (and the panel, if open) picks it up immediately.
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     });
 
     return () => socket.disconnect();
-  }, [user]);
+  }, [user, queryClient]);
 
   return (
-    <SocketContext.Provider value={{ connected, liveNotifications }}>
+    <SocketContext.Provider value={{ connected }}>
       {children}
     </SocketContext.Provider>
   );
