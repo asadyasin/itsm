@@ -4,6 +4,7 @@ const { stringify } = require('csv-stringify/sync');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/ApiError');
 const InventoryItem = require('../models/InventoryItem');
+const InventoryHistory = require('../models/InventoryHistory');
 const Ticket = require('../models/Ticket');
 const Purchase = require('../models/Purchase');
 
@@ -25,7 +26,6 @@ async function buildRows(type, query) {
       }));
     }
     case 'returned-assets': {
-      const InventoryHistory = require('../models/InventoryHistory');
       const returns = await InventoryHistory.find({ action: 'Returned' })
         .populate({ path: 'item', populate: { path: 'itemCategory', select: 'name' } })
         .populate('targetUser', 'name')
@@ -119,6 +119,110 @@ exports.generate = asyncHandler(async (req, res) => {
   sheet.addRows(rows);
   res.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.attachment(`${type}.xlsx`);
+  await workbook.xlsx.write(res);
+  res.end();
+});
+
+// ============================================================================
+// Asset History report: the full lifecycle of ONE physical asset, from the
+// moment it was added to inventory through every issue/return/repair/transfer/
+// scrap event, in chronological order. Unlike the reports above (which list
+// many assets), this is a search-then-drill-down report for a single item.
+// ============================================================================
+
+// GET /api/reports/asset-history/search?query=44xxx
+// Finds candidate assets by serial number, asset tag, brand, or model so the admin can pick
+// the right one (there may be more than one match, e.g. several LCDs from the same batch).
+exports.searchAssetForHistory = asyncHandler(async (req, res) => {
+  const { query = '' } = req.query;
+  if (!query.trim()) return res.json({ success: true, data: [] });
+
+  const regex = new RegExp(query.trim(), 'i');
+  const items = await InventoryItem.find({
+    isDeleted: false,
+    $or: [{ serialNumber: regex }, { assetTag: regex }, { brand: regex }, { model: regex }]
+  })
+    .populate('itemCategory', 'name')
+    .limit(15)
+    .select('serialNumber assetTag brand model status itemCategory');
+
+  res.json({ success: true, data: items });
+});
+
+// GET /api/reports/asset-history/:itemId?format=json|excel|csv|pdf
+// format=json (default) returns the item + its full chronological history for on-screen display.
+// Any other format streams a downloadable report of that same timeline.
+exports.assetHistoryReport = asyncHandler(async (req, res) => {
+  const { itemId } = req.params;
+  const { format = 'json' } = req.query;
+
+  const item = await InventoryItem.findOne({ _id: itemId, isDeleted: false })
+    .populate('itemCategory', 'name')
+    .populate('currentUser', 'name email')
+    .populate({ path: 'purchase', populate: [{ path: 'vendor', select: 'name' }, { path: 'office', select: 'name location' }] });
+  if (!item) throw new ApiError(404, 'Asset not found');
+
+  // Chronological (oldest first) — this is a lifecycle report, so it should read top-to-bottom
+  // the same way the asset's life actually happened: added -> issued -> returned -> ... -> today.
+  const history = await InventoryHistory.find({ item: item._id })
+    .populate('performedBy', 'name')
+    .populate('targetUser', 'name')
+    .populate('relatedTicket', 'ticketNumber')
+    .sort({ dateTime: 1 });
+
+  if (format === 'json') {
+    return res.json({ success: true, data: { item, history } });
+  }
+
+  const rows = history.map((h) => ({
+    Date: h.dateTime?.toISOString().slice(0, 19).replace('T', ' '),
+    Action: h.action,
+    PerformedBy: h.performedBy?.name || '',
+    InvolvingUser: h.targetUser?.name || '',
+    Ticket: h.relatedTicket?.ticketNumber || '',
+    Notes: h.notes || ''
+  }));
+  const filenameBase = `asset-history-${item.serialNumber}`;
+
+  if (format === 'csv') {
+    const csv = stringify(rows, { header: true });
+    res.header('Content-Type', 'text/csv');
+    res.attachment(`${filenameBase}.csv`);
+    return res.send(csv);
+  }
+
+  if (format === 'pdf') {
+    res.header('Content-Type', 'application/pdf');
+    res.attachment(`${filenameBase}.pdf`);
+    const doc = new PDFDocument({ margin: 30, size: 'A4', layout: 'landscape' });
+    doc.pipe(res);
+    doc.fontSize(16).text(`Asset History — ${item.serialNumber}`, { align: 'center' });
+    doc.fontSize(10).text(
+      `${item.itemCategory?.name || ''}  ${item.brand || ''} ${item.model || ''}  •  Current status: ${item.status}`,
+      { align: 'center' }
+    );
+    doc.moveDown();
+    if (rows.length) {
+      const headers = Object.keys(rows[0]);
+      doc.fontSize(9).text(headers.join('   |   '));
+      doc.moveDown(0.5);
+      rows.forEach((row) => {
+        doc.text(headers.map((h) => String(row[h] ?? '')).join('   |   '));
+      });
+    } else {
+      doc.text('No history recorded for this asset yet.');
+    }
+    doc.end();
+    return;
+  }
+
+  // default: excel
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Asset History');
+  sheet.columns = Object.keys(rows[0] || { Date: '' }).map((key) => ({ header: key, key, width: 24 }));
+  sheet.addRows(rows);
+  res.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.attachment(`${filenameBase}.xlsx`);
   await workbook.xlsx.write(res);
   res.end();
 });

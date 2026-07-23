@@ -103,7 +103,10 @@ export const dashboardApi = {
 };
 
 export const reportApi = {
-  download: (type, format) => api.get(`/reports/${type}`, { params: { format }, responseType: 'blob' })
+  download: (type, format) => api.get(`/reports/${type}`, { params: { format }, responseType: 'blob' }),
+  searchAssetHistory: (query) => api.get('/reports/asset-history/search', { params: { query } }),
+  assetHistory: (itemId) => api.get(`/reports/asset-history/${itemId}`, { params: { format: 'json' } }),
+  downloadAssetHistory: (itemId, format) => api.get(`/reports/asset-history/${itemId}`, { params: { format }, responseType: 'blob' })
 };
 
 export const searchApi = {
