@@ -301,6 +301,7 @@ exports.issueItem = asyncHandler(async (req, res) => {
   });
 
   if (sendEmail) {
+    const category = await ItemCategory.findById(item.itemCategory).select('name');
     await sendTemplateEmail({
       to: recipient.email,
       template: 'item-issued',
@@ -310,11 +311,12 @@ exports.issueItem = asyncHandler(async (req, res) => {
       data: {
         userName: recipient.name,
         ticketNumber: ticket ? ticket.ticketNumber : null,
-        itemCategory: item.model || 'Item',
+        itemCategory: category?.name || 'IT Equipment',
         brand: item.brand,
         model: item.model,
         serialNumber: item.serialNumber,
-        issueDate: new Date().toDateString()
+        issueDate: new Date().toDateString(),
+        issuedByName: req.user.name
       }
     });
   }

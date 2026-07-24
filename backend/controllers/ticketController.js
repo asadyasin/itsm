@@ -3,6 +3,7 @@ const ApiError = require('../utils/ApiError');
 const Ticket = require('../models/Ticket');
 const InventoryItem = require('../models/InventoryItem');
 const User = require('../models/User');
+const ItemCategory = require('../models/ItemCategory');
 const { logAction } = require('../services/auditService');
 const { notifyUser, notifyRole } = require('../services/notificationService');
 const { sendTemplateEmail, buildTicketLink } = require('../services/emailService');
@@ -100,7 +101,16 @@ exports.create = asyncHandler(async (req, res) => {
 
   // Email cascade, in order: the requester themselves, then their manager (if any), then every admin.
   const ticketLink = buildTicketLink(ticket._id);
-  const baseData = { requesterName: req.user.name, ticketNumber: ticket.ticketNumber, description, ticketLink };
+  const category = await ItemCategory.findById(ticket.requestedItemCategory).select('name');
+  const baseData = {
+    requesterName: req.user.name,
+    ticketNumber: ticket.ticketNumber,
+    description,
+    ticketLink,
+    priority: ticket.priority,
+    itemCategoryName: category?.name || 'IT Equipment',
+    quantity: ticket.quantity
+  };
 
   await sendTemplateEmail({
     to: req.user.email,
